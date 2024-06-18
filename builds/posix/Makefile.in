@@ -39,6 +39,8 @@ ifeq ($(CROSS_OUT), Y)
 export CROSS:=CrossBuild
 endif
 
+EXPORT_SYMBOLS_STYLE=@EXPORT_SYMBOLS_STYLE@
+
 include     make.defaults
 
 ifeq ($(CROSS_OUT), Y)
@@ -240,11 +242,11 @@ endif
 
 
 #___________________________________________________________________________
-# create platform-specific export lists (version scripts) in gen
+# create platform-specific export lists (version scripts) in gen/$(TARGET)
 #
 
-%.vers: $(ROOT)/builds/posix/%.vers
-	sh vers.sh $(firstword $@)
+$(TARGET)/%.vers: $(ROOT)/builds/posix/%.vers
+	sh vers.sh $(EXPORT_SYMBOLS_STYLE) $(firstword $@)
 
 export_lists: $(ALLVERS)
 
@@ -381,6 +383,7 @@ endif
 cross2:
 	ln -sf $(SRC_ROOT)/include/cross/$(CROSS_CONFIG) $(SRC_ROOT)/include/gen/autoconfig.h
 	$(MAKE) prerequisites
+	$(MAKE) export_lists
 	$(MAKE) tommath
 ifeq ($(WITH_TOMCRYPT),Y)
 	$(MAKE) LTCSOURCE=-DLTC_SOURCE tomcrypt

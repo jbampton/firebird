@@ -65,14 +65,15 @@ platform_linux() {
 
 
 # main
-FILE=${1}
+EXPORT_SYMBOLS_STYLE=${1}
+FILE=${2}
 if test -z "$FILE"
 then
 	echo "Usage: vers.sh export-symbol-file-name"
 	exit 1
 fi
 
-FROM="../builds/posix/$FILE"
+FROM="../builds/posix/`basename $FILE`"
 if test ! -f "$FROM"
 then
 	echo "vers.sh: missing $FROM"
@@ -81,4 +82,4 @@ fi
 
 TO="$FILE"
 
-platform_@EXPORT_SYMBOLS_STYLE@ $FROM >$TO
+platform_${EXPORT_SYMBOLS_STYLE} $FROM >$TO

@@ -311,12 +311,12 @@ ifeq ($(TARGET),Debug)
   UNDEF_FLAGS = $(UNDEF_PLATFORM)
 endif
 
-FIREBIRD_VERS = firebird.vers
-FBINTL_VERS = fbintl.vers
-IB_UTIL_VERS = ib_util.vers
-UDR_PLUGIN_VERS = udr_plugin.vers
-EMPTY_VERS = empty.vers
-PLUGIN_VERS = fbplugin.vers
+FIREBIRD_VERS = $(TARGET)/firebird.vers
+FBINTL_VERS = $(TARGET)/fbintl.vers
+IB_UTIL_VERS = $(TARGET)/ib_util.vers
+UDR_PLUGIN_VERS = $(TARGET)/udr_plugin.vers
+EMPTY_VERS = $(TARGET)/empty.vers
+PLUGIN_VERS = $(TARGET)/fbplugin.vers
 
 ALLVERS = $(FIREBIRD_VERS) $(FBINTL_VERS) $(IB_UTIL_VERS)
 ALLVERS += $(UDR_PLUGIN_VERS) $(EMPTY_VERS) $(PLUGIN_VERS)
