@@ -1519,6 +1519,12 @@ gen/Release/firebird/bin/registerDatabase.sh:builds/install/posix-common/registe
 ])
 fi
 
+if [[[ x$CROSS = xios* ]]]; then
+AC_CONFIG_FILES([
+gen/configure.cmake:builds/posix/ios_cross_linux.cmake
+])
+fi
+
 AC_CONFIG_FILES([
 gen/vers.sh:builds/posix/vers.sh.in
 ])

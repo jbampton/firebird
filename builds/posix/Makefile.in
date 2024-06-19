@@ -130,6 +130,8 @@ RPL_AWK=$(GEN_ROOT)/def_awk
 RPL_AWK_SRC=$(MISC)/def_awk.c
 RPL_GREP=$(GEN_ROOT)/isc_grep
 RPL_GREP_SRC=$(MISC)/isc_grep.c
+CDS_CONF_SRC=configure.cmake
+CDS_CONF_FILE=$(ROOT)/extern/libcds/$(CDS_CONF_SRC)
 
 updateCloopInterfaces : $(API_H_FILE) $(API_PAS_FILE)
 
@@ -326,6 +328,7 @@ master_process:
 	ln -sf $(SRC_ROOT)/include/gen/autoconfig.auto $(SRC_ROOT)/include/gen/autoconfig.h
 	$(MAKE) updateBuildNum
 	$(MAKE) export_lists
+	$(RM) $(CDS_CONF_FILE); touch $(CDS_CONF_FILE)
 	$(MAKE) external
 	$(MAKE) updateCloopInterfaces
 	$(MAKE) rest
@@ -361,6 +364,7 @@ cross1:
 	ln -sf $(SRC_ROOT)/include/gen/autoconfig.auto $(SRC_ROOT)/include/gen/autoconfig.h
 	$(MAKE) updateBuildNum
 	$(MAKE) export_lists
+	$(RM) $(CDS_CONF_FILE); touch $(CDS_CONF_FILE)
 	$(MAKE) external
 	$(MAKE) updateCloopInterfaces
 ifeq ($(CLIENT_ONLY_FLG),N)
@@ -390,6 +394,7 @@ ifeq ($(WITH_TOMCRYPT),Y)
 endif
 ifeq ($(CLIENT_ONLY_FLG),N)
 	$(MAKE) re2
+	[ -f $(CDS_CONF_SRC) ] && $(CP) $(CDS_CONF_SRC) $(CDS_CONF_FILE)
 	$(MAKE) libcds
 endif
 	CC="$(CC)" CFLAGS="$(CFLAGS)" AR="$(AR)" $(MAKE) -C $(ROOT)/extern/decNumber

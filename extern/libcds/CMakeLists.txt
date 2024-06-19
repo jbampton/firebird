@@ -5,10 +5,7 @@ if(POLICY CMP0042)
     cmake_policy(SET CMP0042 NEW)
 endif()
 
-SET(CMAKE_SYSTEM_NAME Darwin)
-SET(CMAKE_C_COMPILER arm-apple-darwin11-clang)
-SET(CMAKE_CXX_COMPILER arm-apple-darwin11-clang++)
-SET(CMAKE_LINKER arm-apple-darwin11-ld)
+include(configure.cmake)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build/cmake ${CMAKE_MODULE_PATH})
 include(TargetArch)
