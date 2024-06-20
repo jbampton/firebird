@@ -271,6 +271,9 @@
 #define O_DIRECT F_NOCACHE
 #endif /* Darwin Platforms */
 
+#ifdef IOS
+#define NO_NFS                  /* no MTAB_OPEN or MTAB_CLOSE in isc_file.c */
+#endif /* IPhone OS */
 
 /*****************************************************
 * FreeBSD

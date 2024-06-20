@@ -28,11 +28,15 @@
 
 Boolean isSandboxed()
 {
+#ifndef IOS
 	SecTaskRef task = SecTaskCreateFromSelf(nil);
 	CFTypeRef value = SecTaskCopyValueForEntitlement(task,
 		CFStringCreateWithCString(0, "com.apple.security.app-sandbox", kCFStringEncodingUTF8), nil);
 
     return value != nil;
+#else
+	return 1;
+#endif
 }
 
 const char* getTemporaryFolder()

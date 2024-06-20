@@ -1,9 +1,9 @@
-MACTOOLS:=/usr/home/firebird/Mac/mactools/usr
+MACTOOLS:=/usr/home/firebird/Mac/mactools
 
-export PATH:=/usr/home/firebird/Mac/mactools/usr/bin:$(shell echo $$PATH)
-export LD_LIBRARY_PATH:=/usr/home/firebird/Mac/mactools/usr/lib
+export PATH:=$(MACTOOLS)/usr/bin:$(shell echo $$PATH)
+export LD_LIBRARY_PATH:=$(MACTOOLS)/usr/lib:$(shell echo $$LD_LIBRARY_PATH)
 
-CROSS_PREFIX:=$(MACTOOLS)/bin/arm-apple-darwin11-
+CROSS_PREFIX:=$(MACTOOLS)/usr/bin/arm-apple-darwin11-
 
 CROSS_FLAGS:=-I$(ROOT)/gen/cross
 
@@ -23,6 +23,9 @@ export CC
 export AR
 export CROSS_FLAGS
 
+PLATFORM_PATH:=os/darwin
+PLATFORM_FALLBACK:=os/posix
+
 COMMON_FLAGS=-ggdb -DFB_SEND_FLAGS=MSG_NOSIGNAL -DDARWIN -DIOS -DARM64 -pipe -MMD -fPIC -fmessage-length=0 \
 			 -I$(ROOT)/extern/libtommath -I$(ROOT)/extern/libtomcrypt/src/headers \
 			 $(CROSS_FLAGS) -fsigned-char \
@@ -39,15 +42,14 @@ UNDEF_PLATFORM=-Wl,-undefined,error
 LIB_LINK_MAPFILE=-Wl,-exported_symbols_list,$(1)
 EXPORT_SYMBOLS_STYLE=darwin
 
+IOS_LIB=-lm -lobjc -framework Foundation $(DECLIB) $(I128LIB)
+# -framework Security
+LINK_LIBS=$(IOS_LIB)
+SO_LINK_LIBS=$(IOS_LIB)
 
 LDFLAGS += -static-libstdc++
-#DroidLibs := -lm -ldl -llog $(DECLIB) $(I128LIB)
 UDR_SUPPORT_LIBS :=
 LIB_LINK_SONAME= -Wl,-install_name,$(1)
-
-#LINK_LIBS = $(DroidLibs)
-#STATICLINK_LIBS = $(DroidLibs)
-#SO_LINK_LIBS = $(DroidLibs)
 
 #EXE_LINK_OPTIONS= $(LDFLAGS) $(UNDEF_FLAGS) $(LIB_PATH_OPTS) $(LINK_EMPTY_SYMBOLS) -pie
 #LIB_LINK_OPTIONS= $(LDFLAGS) -shared
@@ -60,11 +62,10 @@ ifndef UNICODE_DIR
 endif
 
 .PHONY:	prerequisites
-prerequisites:
-#$(ROOT)/gen/cross/unicode
+prerequisites: $(ROOT)/gen/cross/unicode
 
-#$(ROOT)/gen/cross/unicode:
-#	echo $(UNICODE_DIR)
-#	rm -rf $(ROOT)/gen/cross
-#	mkdir $(ROOT)/gen/cross
-#	ln -s $(UNICODE_DIR) cross/unicode
+$(ROOT)/gen/cross/unicode:
+	echo $(UNICODE_DIR)
+	rm -rf $(ROOT)/gen/cross
+	mkdir $(ROOT)/gen/cross
+	ln -s $(UNICODE_DIR) cross/unicode

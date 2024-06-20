@@ -1754,7 +1754,7 @@ int API_ROUTINE isc_modify_dpb(SCHAR**	dpb,
 }
 
 
-#if defined(UNIX) || defined(WIN_NT)
+#if (defined(UNIX) && !defined(IOS)) || defined(WIN_NT)
 int API_ROUTINE gds__edit(const TEXT* file_name, USHORT /*type*/)
 {
 /**************************************
@@ -1790,6 +1790,14 @@ int API_ROUTINE gds__edit(const TEXT* file_name, USHORT /*type*/)
 	os_utils::stat(file_name, &after);
 
 	return (before.st_mtime != after.st_mtime || before.st_size != after.st_size);
+}
+#endif
+
+
+#if defined(IOS)
+int API_ROUTINE gds__edit(const TEXT* /*file_name*/, USHORT /*type*/)
+{
+	fatal_exception::raise("Calling editor is unavailable on iOS");
 }
 #endif
 

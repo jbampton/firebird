@@ -252,7 +252,7 @@
 #define HAVE_MMAP 1
 
 /* Define to 1 if you have the <mntent.h> header file. */
-#define HAVE_MNTENT_H 1
+/* #undef HAVE_MNTENT_H */
 
 /* Define to 1 if you have the <mnttab.h> header file. */
 /* #undef HAVE_MNTTAB_H */
