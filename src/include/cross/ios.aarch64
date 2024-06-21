@@ -162,7 +162,7 @@
 #define HAVE_FCNTL_H 1
 
 /* Define to 1 if you have the `fdatasync' function. */
-#define HAVE_FDATASYNC 1
+/* #undef HAVE_FDATASYNC */
 
 /* Define to 1 if you have the `fegetenv' function. */
 #define HAVE_FEGETENV 1
@@ -590,7 +590,7 @@
 #define STDC_HEADERS 1
 
 /* Define this if databases on raw devices should be supported */
-#define SUPPORT_RAW_DEVICES 1
+/* #undef SUPPORT_RAW_DEVICES */
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #define TIME_WITH_SYS_TIME 1

@@ -251,6 +251,9 @@ namespace Replication
 		DWORD exitCode = 0;
 		GetExitCodeProcess(seInfo.hProcess, &exitCode);
 		return (int) exitCode;
+#elif defined(IOS)
+		errno = EPERM;
+		return -1;
 #else
 		return system(command.c_str());
 #endif

@@ -4235,6 +4235,9 @@ static processing_state copy_table(TEXT* source,
 	{
 		fclose(isqlGlob.Out);
 
+#ifdef IOS
+		STDERROUT("Table copy not supported on iOS");
+#else
 		// easy to make a copy in another database
 		const TEXT* altdb = isqlGlob.global_Db_name;
 		if (*otherdb)
@@ -4246,6 +4249,7 @@ static processing_state copy_table(TEXT* source,
 			IUTILS_msg_get(COPY_ERR, errbuf, SafeArg() << destination << altdb);
 			STDERROUT(errbuf);
 		}
+#endif
 	}
 
 	unlink(ftmp.c_str());
@@ -5022,6 +5026,9 @@ static processing_state escape(const TEXT* cmd)
 	if (!*shellcmd)
 		shellcmd = emptyCmd;
 
+#ifdef IOS
+	return FAIL;
+#else
 	const int rc = system(shellcmd);
 
 #ifdef WIN_NT
@@ -5032,6 +5039,7 @@ static processing_state escape(const TEXT* cmd)
 #endif
 
 	return rc ? FAIL : SKIP;
+#endif // IOS
 }
 
 
