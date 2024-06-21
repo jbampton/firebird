@@ -394,7 +394,7 @@ ifeq ($(WITH_TOMCRYPT),Y)
 endif
 ifeq ($(CLIENT_ONLY_FLG),N)
 	$(MAKE) re2
-	[ -f $(CDS_CONF_SRC) ] && $(CP) $(CDS_CONF_SRC) $(CDS_CONF_FILE)
+	-[ -f $(CDS_CONF_SRC) ] && $(CP) $(CDS_CONF_SRC) $(CDS_CONF_FILE)
 	$(MAKE) libcds
 endif
 	CC="$(CC)" CFLAGS="$(CFLAGS)" AR="$(AR)" $(MAKE) -C $(ROOT)/extern/decNumber
