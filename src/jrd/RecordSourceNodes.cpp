@@ -55,7 +55,7 @@ static ValueExprNode* resolveUsingField(DsqlCompilerScratch* dsqlScratch, const 
 namespace
 {
 	// Search through the list of ANDed booleans to find comparisons
-	// referring streams of other select expressions.
+	// referring streams of parent select expressions.
 	// Extract those booleans and return them to the caller.
 
 	bool findDependentBooleans(CompilerScratch* csb,
@@ -85,16 +85,19 @@ namespace
 
 		if (const auto cmpNode = nodeAs<ComparativeBoolNode>(boolean))
 		{
-			SortedStreamList streams;
-			cmpNode->collectStreams(streams);
-
-			for (const auto stream : streams)
+			if (cmpNode->blrOp == blr_eql || cmpNode->blrOp == blr_equiv)
 			{
-				if (!rseStreams.exist(stream))
+				SortedStreamList streams;
+				cmpNode->collectStreams(streams);
+
+				for (const auto stream : streams)
 				{
-					booleanStack.push(boolean);
-					*parentBoolean = nullptr;
-					return true;
+					if (rseStreams.exist(stream))
+					{
+						booleanStack.push(boolean);
+						*parentBoolean = nullptr;
+						return true;
+					}
 				}
 			}
 		}
@@ -106,6 +109,7 @@ namespace
 	// They are candidates to be converted into semi- or anti-joins.
 
 	bool findPossibleJoins(CompilerScratch* csb,
+						   const StreamList& rseStreams,
 						   BoolExprNode** parentBoolean,
 						   RecordSourceNodeStack& rseStack,
 						   BoolExprNodeStack& booleanStack)
@@ -115,10 +119,10 @@ namespace
 		const auto binaryNode = nodeAs<BinaryBoolNode>(boolNode);
 		if (binaryNode && binaryNode->blrOp == blr_and)
 		{
-			const bool found1 = findPossibleJoins(csb, binaryNode->arg1.getAddress(),
-				rseStack, booleanStack);
-			const bool found2 = findPossibleJoins(csb, binaryNode->arg2.getAddress(),
-				rseStack, booleanStack);
+			const bool found1 = findPossibleJoins(csb, rseStreams,
+				binaryNode->arg1.getAddress(), rseStack, booleanStack);
+			const bool found2 = findPossibleJoins(csb, rseStreams,
+				binaryNode->arg2.getAddress(), rseStack, booleanStack);
 
 			if (!binaryNode->arg1 && !binaryNode->arg2)
 				*parentBoolean = nullptr;
@@ -135,18 +139,23 @@ namespace
 		if (rseNode && (rseNode->blrOp == blr_any || rseNode->blrOp == blr_ansi_any))
 		{
 			auto rse = rseNode->rse;
-			fb_assert(rse);
+			fb_assert(rse && (rse->flags & RseNode::FLAG_SUB_QUERY));
 
-			if (rse->rse_boolean)
+			if (rse->rse_boolean && rse->rse_jointype == blr_inner &&
+				!rse->rse_first && !rse->rse_skip && !rse->rse_plan)
 			{
+				// Find booleans convertable into semi-joins
+
 				StreamList streams;
 				rse->computeRseStreams(streams);
 
 				BoolExprNodeStack booleans;
-				if (findDependentBooleans(csb, streams,
+				if (findDependentBooleans(csb, rseStreams,
 										  rse->rse_boolean.getAddress(),
 										  booleans))
 				{
+					// Compose the conjunct boolean
+
 					fb_assert(booleans.hasData());
 					auto boolean = booleans.pop();
 					while (booleans.hasData())
@@ -158,11 +167,45 @@ namespace
 						boolean = andNode;
 					}
 
-					rse->flags |= RseNode::FLAG_SEMI_JOINED;
-					rseStack.push(rse);
-					booleanStack.push(boolean);
-					*parentBoolean = nullptr;
-					return true;
+					// Ensure that no external references are left inside the subquery.
+					// If so, mark the RSE as joined and add it to the stack.
+
+					SortedStreamList streams;
+					rse->collectStreams(streams);
+
+					bool dependent = false;
+					for (const auto stream : streams)
+					{
+						if (rseStreams.exist(stream))
+						{
+							dependent = true;
+							break;
+						}
+					}
+
+					if (!dependent)
+					{
+						rse->flags &= ~RseNode::FLAG_SUB_QUERY;
+						rse->flags |= RseNode::FLAG_SEMI_JOINED;
+						rseStack.push(rse);
+						booleanStack.push(boolean);
+						*parentBoolean = nullptr;
+						return true;
+					}
+
+					// Otherwise, restore the original sub-query by adding
+					// the collected booleans back to the RSE.
+
+					if (rse->rse_boolean)
+					{
+						const auto andNode = FB_NEW_POOL(csb->csb_pool)
+							BinaryBoolNode(csb->csb_pool, blr_and);
+						andNode->arg1 = boolean;
+						andNode->arg2 = rse->rse_boolean;
+						boolean = andNode;
+					}
+
+					rse->rse_boolean = boolean;
 				}
 			}
 		}
@@ -3419,21 +3462,51 @@ RecordSource* RseNode::compile(thread_db* tdbb, Optimizer* opt, bool innerSubStr
 
 RseNode* RseNode::processPossibleJoins(thread_db* tdbb, CompilerScratch* csb)
 {
-	if (rse_jointype != blr_inner || !rse_boolean)
+	if (rse_jointype != blr_inner || !rse_boolean || rse_plan)
 		return nullptr;
+
+	// If the sub-query is nested inside the other sub-query which wasn't converted into semi-join,
+	// it makes no sense to apply a semi-join at the deeper levels, as a sub-query is expected
+	// to be executed repeatedly.
+	// This is a temporary fix until nested loop semi-joins are allowed by the optimizer.
+
+	if (flags & FLAG_SUB_QUERY)
+		return nullptr;
+
+	for (const auto node : csb->csb_current_nodes)
+	{
+		if (const auto rse = nodeAs<RseNode>(node))
+		{
+			if (rse->flags & FLAG_SUB_QUERY)
+				return nullptr;
+		}
+	}
 
 	RecordSourceNodeStack rseStack;
 	BoolExprNodeStack booleanStack;
 
 	// Find possibly joinable sub-queries
 
-	if (!findPossibleJoins(csb, rse_boolean.getAddress(), rseStack, booleanStack))
+	StreamList rseStreams;
+	computeRseStreams(rseStreams);
+
+	if (!findPossibleJoins(csb, rseStreams, rse_boolean.getAddress(), rseStack, booleanStack))
 		return nullptr;
 
 	fb_assert(rseStack.hasData() && booleanStack.hasData());
 	fb_assert(rseStack.getCount() == booleanStack.getCount());
 
-	// Create joins between the original node and detected joinable nodes
+	// Create joins between the original node and detected joinable nodes.
+	// Preserve FIRST/SKIP nodes at their original position, i.e. outside semi-joins.
+
+	const auto first = rse_first;
+	rse_first = nullptr;
+
+	const auto skip = rse_skip;
+	rse_skip = nullptr;
+
+	const auto orgFlags = flags;
+	flags = 0;
 
 	auto rse = this;
 	while (rseStack.hasData())
@@ -3449,6 +3522,21 @@ RseNode* RseNode::processPossibleJoins(thread_db* tdbb, CompilerScratch* csb)
 
 		rse = newRse;
 	}
+
+	if (first || skip)
+	{
+		const auto newRse = FB_NEW_POOL(*tdbb->getDefaultPool())
+			RseNode(*tdbb->getDefaultPool());
+
+		newRse->rse_relations.add(rse);
+		newRse->rse_jointype = blr_inner;
+		newRse->rse_first = first;
+		newRse->rse_skip = skip;
+
+		rse = newRse;
+	}
+
+	rse->flags = orgFlags;
 
 	return rse;
 }

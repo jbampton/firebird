@@ -248,11 +248,15 @@ namespace
 					for (const auto subRiver : rivers)
 					{
 						auto subRsb = subRiver->getRecordSource();
+
 						subRiver->activate(csb);
 						if (subRiver != rivers.front())
 							subRsb = opt->applyBoolean(subRsb, iter);
+
 						rsbs.add(subRsb);
 					}
+
+					rivers.clear();
 				}
 
 				m_rsb = FB_NEW_POOL(csb->csb_pool)
@@ -695,7 +699,7 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 	// AB: If we have limit our retrieval with FIRST / SKIP syntax then
 	// we may not deliver above conditions (from higher rse's) to this
 	// rse, because the results should be consistent.
-	if (rse->rse_skip || rse->rse_first)
+	if (rse->rse_skip || rse->rse_first || isSemiJoined())
 		parentStack = nullptr;
 
 	// Set base-point before the parent/distributed nodes begin.
@@ -811,14 +815,15 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 	for (const auto rseStream : rseStreams)
 		csb->csb_rpt[rseStream].deactivate();
 
-	// Find and collect booleans that are invariant in this context
-	// (i.e. independent from streams in the RseNode). We can do that
-	// easily because these streams are inactive at this point and
-	// any node that references them will be not computable.
+	// Find and collect booleans that are both deterministic and invariant
+	// in this context (i.e. independent from streams in the RseNode).
+	// We can check that easily because these streams are inactive at this point
+	// and any node that references them will be not computable.
 	// Note that we cannot do that for outer joins, as in this case boolean
 	// represents a join condition which does not filter out the rows.
 
 	BoolExprNode* invariantBoolean = nullptr;
+
 	if (isInnerJoin())
 	{
 		for (auto iter = getBaseConjuncts(); iter.hasData(); ++iter)
@@ -835,8 +840,7 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 	// Go through the record selection expression generating
 	// record source blocks for all streams
 
-	bool semiJoin = false;
-	RiverList rivers, dependentRivers;
+	RiverList rivers, dependentRivers, specialRivers;
 
 	bool innerSubStream = false;
 	for (auto node : rse->rse_relations)
@@ -845,11 +849,9 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 		fb_assert(aggregate == rse->rse_aggregate);
 
 		const auto subRse = nodeAs<RseNode>(node);
-		if (subRse && subRse->isSemiJoined())
-		{
-			fb_assert(rse->rse_jointype == blr_inner);
-			semiJoin = true;
-		}
+
+		const bool semiJoin = (subRse && subRse->isSemiJoined());
+		fb_assert(!semiJoin || rse->rse_jointype == blr_inner);
 
 		// Find the stream number and place it at the end of the bedStreams array
 		// (if this is really a stream and not another RseNode)
@@ -874,7 +876,7 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 			// AB: Save all outer-part streams
 			if (isInnerJoin() || (isLeftJoin() && !innerSubStream))
 			{
-				if (!semiJoin && node->computable(csb, INVALID_STREAM, false))
+				if (node->computable(csb, INVALID_STREAM, false))
 					computable = true;
 
 				// Apply local booleans, if any. Note that it's done
@@ -889,7 +891,11 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 			if (computable)
 			{
 				outerStreams.join(localStreams);
-				rivers.add(river);
+
+				if (semiJoin)
+					specialRivers.add(river);
+				else
+					rivers.add(river);
 			}
 			else
 			{
@@ -946,18 +952,7 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 	}
 	else
 	{
-		// Compile the main streams before processing the semi-join itself
-		if (semiJoin && compileStreams.hasData())
-		{
-			generateInnerJoin(compileStreams, rivers, &sort, rse->rse_plan);
-			fb_assert(compileStreams.isEmpty());
-
-			// Ensure the main query river is stored before the semi-joined ones
-			const auto river = rivers.pop();
-			rivers.insert(0, river);
-		}
-
-		const JoinType joinType = semiJoin ? SEMI_JOIN : INNER_JOIN;
+		JoinType joinType = INNER_JOIN;
 
 		// AB: If previous rsb's are already on the stack we can't use
 		// a navigational-retrieval for an ORDER BY because the next
@@ -1026,16 +1021,48 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 		// Attempt to form joins in decreasing order of desirability
 		generateInnerJoin(joinStreams, rivers, &sort, rse->rse_plan);
 
-		// Re-activate remaining rivers to be hashable/mergeable
-		for (const auto river : rivers)
-			river->activate(csb);
+		if (rivers.isEmpty() && dependentRivers.isEmpty())
+		{
+			// This case may look weird, but it's possible for recursive unions
+			rsb = FB_NEW_POOL(csb->csb_pool) NestedLoopJoin(csb, 0, nullptr, joinType);
+		}
+		else
+		{
+			while (rivers.hasData() || dependentRivers.hasData())
+			{
+				// Re-activate remaining rivers to be hashable/mergeable
+				for (const auto river : rivers)
+					river->activate(csb);
 
-		// If there are multiple rivers, try some hashing or sort/merging
-		while (generateEquiJoin(rivers, joinType))
-			;
+				// If there are multiple rivers, try some hashing or sort/merging
+				while (generateEquiJoin(rivers, joinType))
+					;
 
-		rivers.join(dependentRivers);
-		rsb = CrossJoin(this, rivers, joinType).getRecordSource();
+				if (dependentRivers.hasData())
+				{
+					fb_assert(joinType == INNER_JOIN);
+
+					rivers.join(dependentRivers);
+					dependentRivers.clear();
+				}
+
+				const auto finalRiver = FB_NEW_POOL(getPool()) CrossJoin(this, rivers, joinType);
+				fb_assert(rivers.isEmpty());
+				rsb = finalRiver->getRecordSource();
+
+				if (specialRivers.hasData())
+				{
+					fb_assert(joinType == INNER_JOIN);
+					joinType = SEMI_JOIN;
+
+					rivers.add(finalRiver);
+					rivers.join(specialRivers);
+					specialRivers.clear();
+				}
+			}
+		}
+
+		fb_assert(rsb);
 
 		// Pick up any residual boolean that may have fallen thru the cracks
 		rsb = applyResidualBoolean(rsb);
@@ -2485,7 +2512,7 @@ bool Optimizer::generateEquiJoin(RiverList& rivers, JoinType joinType)
 		{
 			maxCardinality2 = maxCardinality1;
 			maxCardinality1 = cardinality;
-			maxCardinalityPosition = rivers.getCount();
+			maxCardinalityPosition = joinedRivers.getCount();
 		}
 		else if (cardinality > maxCardinality2)
 			maxCardinality2 = cardinality;
