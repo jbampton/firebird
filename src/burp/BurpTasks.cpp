@@ -565,9 +565,9 @@ bool BackupRelationTask::fileWriter(Item& item)
 	// msg 142  writing data for relation %s
 
 	IOBuffer*& buf = item.m_buffer = NULL;
-	FB_SIZE_T records = 0;
-	FB_SIZE_T verbRecs = -1;
-	FB_SIZE_T verb = 0;
+	FB_UINT64 records = 0;
+	FB_UINT64 verbRecs = -1;
+	FB_UINT64 verb = 0;
 	while (!m_stop)
 	{
 		if (!buf)
@@ -867,6 +867,8 @@ void RestoreRelationTask::initItem(BurpGlobals* tdgbl, Item& item)
 	tdgbl->sw_redirect = m_masterGbl->sw_redirect;
 	tdgbl->gbl_stat_flags = m_masterGbl->gbl_stat_flags;
 	tdgbl->verboseInterval = m_masterGbl->verboseInterval;
+	tdgbl->RESTORE_format = m_masterGbl->RESTORE_format;
+	tdgbl->runtimeODS = m_masterGbl->runtimeODS;
 
 	if (item.m_ownAttach)
 	{

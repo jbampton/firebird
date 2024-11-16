@@ -396,6 +396,20 @@ bool ExprNode::sameAs(const ExprNode* other, bool ignoreStreams) const
 	return true;
 }
 
+bool ExprNode::deterministic() const
+{
+	NodeRefsHolder holder;
+	getChildren(holder, false);
+
+	for (auto i : holder.refs)
+	{
+		if (*i && !(*i)->deterministic())
+			return false;
+	}
+
+	return true;
+}
+
 bool ExprNode::possiblyUnknown() const
 {
 	NodeRefsHolder holder;
@@ -3559,7 +3573,7 @@ ValueExprNode* CastNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 	node->dsqlField = dsqlField;
 	node->format = format;
 
-	DDL_resolve_intl_type(dsqlScratch, node->dsqlField, NULL);
+	DDL_resolve_intl_type(dsqlScratch, node->dsqlField, node->dsqlField->collate);
 	node->setParameterType(dsqlScratch, NULL, false);
 
 	DsqlDescMaker::fromField(&node->castDesc, node->dsqlField);
@@ -12331,7 +12345,7 @@ DmlNode* SysFuncCallNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScrat
 		if (literal && literal->litDesc.isText())
 		{
 			MetaName relName;
-			CVT2_make_metaname(&literal->litDesc, name, tdbb->getAttachment()->att_dec_status);
+			CVT2_make_metaname(&literal->litDesc, relName, tdbb->getAttachment()->att_dec_status);
 
 			const jrd_rel* const relation = MET_lookup_relation(tdbb, relName);
 
@@ -12388,6 +12402,11 @@ void SysFuncCallNode::make(DsqlCompilerScratch* dsqlScratch, dsc* desc)
 	DSqlDataTypeUtil dataTypeUtil(dsqlScratch);
 	function->checkArgsMismatch(argsArray.getCount());
 	function->makeFunc(&dataTypeUtil, function, desc, argsArray.getCount(), argsArray.begin());
+}
+
+bool SysFuncCallNode::deterministic() const
+{
+	return ExprNode::deterministic() && function->deterministic;
 }
 
 void SysFuncCallNode::getDesc(thread_db* tdbb, CompilerScratch* csb, dsc* desc)
@@ -13304,6 +13323,11 @@ void UdfCallNode::make(DsqlCompilerScratch* /*dsqlScratch*/, dsc* desc)
 
 	if (desc->isText() || (desc->isBlob() && desc->getBlobSubType() == isc_blob_text))
 		desc->setTextType(dsqlFunction->udf_character_set_id);
+}
+
+bool UdfCallNode::deterministic() const
+{
+	return ExprNode::deterministic() && function->fun_deterministic;
 }
 
 void UdfCallNode::getDesc(thread_db* /*tdbb*/, CompilerScratch* /*csb*/, dsc* desc)

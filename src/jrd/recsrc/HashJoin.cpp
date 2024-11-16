@@ -592,6 +592,12 @@ void HashJoin::internalGetPlan(thread_db* tdbb, PlanEntry& planEntry, unsigned l
 			fb_assert(false);
 	}
 
+	string extras;
+	extras.printf(" (keys: %" ULONGFORMAT", total key length: %" ULONGFORMAT")",
+				  m_leader.keys->getCount(), m_leader.totalKeyLength);
+
+	planEntry.lines.add().text += extras;
+
 	printOptInfo(planEntry.lines);
 
 	if (recurse)

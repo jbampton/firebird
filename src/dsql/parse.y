@@ -1546,18 +1546,19 @@ create_clause
 			node->createIfNotExistsOnly = $2;
 			$$ = node;
 		}
-	| unique_opt order_direction INDEX if_not_exists_opt symbol_index_name ON simple_table_name
+	| unique_opt order_direction INDEX if_not_exists_opt symbol_index_name index_active_opt ON simple_table_name
 			{
 				const auto node = newNode<CreateIndexNode>(*$5);
+				node->active = $6;
 				node->unique = $1;
 				node->descending = $2;
 				node->createIfNotExistsOnly = $4;
-				node->relation = $7;
+				node->relation = $8;
 				$$ = node;
 			}
-		index_definition(static_cast<CreateIndexNode*>($8))
+		index_definition(static_cast<CreateIndexNode*>($9))
 			{
-				$$ = $8;
+				$$ = $9;
 			}
 	| FUNCTION if_not_exists_opt function_clause
 		{
@@ -1710,6 +1711,7 @@ replace_clause
 	| FUNCTION replace_function_clause			{ $$ = $2; }
 	| TRIGGER replace_trigger_clause			{ $$ = $2; }
 	| PACKAGE replace_package_clause			{ $$ = $2; }
+	| PACKAGE BODY replace_package_body_clause	{ $$ = $3; }
 	| VIEW replace_view_clause					{ $$ = $2; }
 	| EXCEPTION replace_exception_clause		{ $$ = $2; }
 	| GENERATOR replace_sequence_clause			{ $$ = $2; }
@@ -1752,6 +1754,12 @@ alter_exception_clause
 
 
 // CREATE INDEX
+
+%type <boolVal> index_active_opt
+index_active_opt
+	: /* nothing */		{ $$ = true; }
+	| index_active		{ $$ = $1; }
+	;
 
 %type <boolVal> unique_opt
 unique_opt
@@ -3221,6 +3229,12 @@ package_body_item
 	;
 
 
+%type <ddlNode> replace_package_body_clause
+replace_package_body_clause
+	: package_body_clause
+		{ $$ = newNode<RecreatePackageBodyNode>($1); }
+	;
+
 %type <localDeclarationsNode> local_declarations_opt
 local_declarations_opt
 	: local_forward_declarations_opt local_nonforward_declarations_opt
@@ -4287,6 +4301,7 @@ alter_clause
 	| TRIGGER alter_trigger_clause			{ $$ = $2; }
 	| PROCEDURE alter_procedure_clause		{ $$ = $2; }
 	| PACKAGE alter_package_clause			{ $$ = $2; }
+	| PACKAGE BODY replace_package_body_clause	{ $$ = $3; }
 	| DATABASE
 			{ $<alterDatabaseNode>$ = newNode<AlterDatabaseNode>(); }
 		alter_db($<alterDatabaseNode>2)
@@ -4676,8 +4691,16 @@ drop_behaviour
 
 %type <ddlNode>	alter_index_clause
 alter_index_clause
-	: symbol_index_name ACTIVE		{ $$ = newNode<AlterIndexNode>(*$1, true); }
-	| symbol_index_name INACTIVE	{ $$ = newNode<AlterIndexNode>(*$1, false); }
+	: symbol_index_name index_active
+		{
+			$$ = newNode<AlterIndexNode>(*$1, $2);
+		}
+	;
+
+%type <boolVal> index_active
+index_active
+	: ACTIVE	{ $$ = true; }
+	| INACTIVE	{ $$ = false; }
 	;
 
 %type <ddlNode>	alter_udf_clause
@@ -7804,7 +7827,7 @@ map_from_symbol_name
 %type <intlStringPtr> map_logoninfo
 map_logoninfo
 	: sql_string
-	| valid_symbol_name		{ $$ = newNode<IntlString>($1->c_str()); }
+	| valid_symbol_name		{ $$ = newIntlString($1->c_str(), metadataCharSet->getName()); }
 	;
 
 %type map_using(<mappingNode>)
