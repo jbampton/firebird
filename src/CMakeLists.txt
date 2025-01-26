@@ -572,17 +572,6 @@ set_output_directory        (srp plugins)
 set_exported_symbols        (srp fbplugin)
 
 
-########################################
-# SHARED LIBRARY legacy_auth
-########################################
-
-add_library                 (legacy_auth SHARED auth/SecurityDatabase/LegacyServer.cpp ${VERSION_RC})
-target_link_libraries       (legacy_auth common yvalve)
-set_target_properties       (legacy_auth PROPERTIES OUTPUT_NAME Legacy_Auth)
-set_output_directory        (legacy_auth plugins)
-set_exported_symbols        (legacy_auth fbplugin)
-
-
 ################################################################################
 #
 # EXECUTABLES
