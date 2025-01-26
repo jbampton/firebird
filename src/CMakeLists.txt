@@ -58,7 +58,6 @@ set(epp_boot_gds_files
     jrd/Function.epp
 )
 set(epp_master_files
-    auth/SecurityDatabase/LegacyManagement.epp
     msgs/build_file.epp
     misc/codes.epp
 )
@@ -530,22 +529,6 @@ set_output_directory        (intl intl)
 add_library                 (ib_util SHARED extlib/ib_util.cpp ${VERSION_RC})
 set_exported_symbols        (ib_util ib_util)
 set_output_directory_unix   (ib_util lib)
-
-
-########################################
-# SHARED LIBRARY legacy_usermanager
-########################################
-
-set(legacy_usermanager_generated_src
-    auth/SecurityDatabase/LegacyManagement.epp
-)
-add_epp_suffix(legacy_usermanager_generated_src master)
-
-add_library                 (legacy_usermanager SHARED ${legacy_usermanager_generated_src_master} auth/SecurityDatabase/LegacyManagement.h ${VERSION_RC})
-target_link_libraries       (legacy_usermanager common yvalve)
-set_target_properties       (legacy_usermanager PROPERTIES OUTPUT_NAME Legacy_UserManager)
-set_output_directory        (legacy_usermanager plugins)
-set_exported_symbols        (legacy_usermanager fbplugin)
 
 
 ########################################
