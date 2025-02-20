@@ -42,9 +42,6 @@ IExternalResultSet* SqlPackage::explainProcedure(ThrowStatusExceptionWrapper* st
 }
 
 
-//--------------------------------------
-
-
 SqlPackage::ExplainResultSet::ExplainResultSet(ThrowStatusExceptionWrapper* status,
 		IExternalContext* context, const ExplainInput::Type* in, ExplainOutput::Type* aOut)
 	: out(aOut)
@@ -161,6 +158,42 @@ FB_BOOLEAN SqlPackage::ExplainResultSet::fetch(ThrowStatusExceptionWrapper* stat
 //--------------------------------------
 
 
+IExternalResultSet* SqlPackage::parseUnqualifiedNamesProcedure(ThrowStatusExceptionWrapper* status,
+	IExternalContext* context, const ParseUnqualifiedNamesInput::Type* in, ParseUnqualifiedNamesOutput::Type* out)
+{
+	return FB_NEW ParseUnqualifiedNamesResultSet(status, context, in, out);
+}
+
+
+SqlPackage::ParseUnqualifiedNamesResultSet::ParseUnqualifiedNamesResultSet(ThrowStatusExceptionWrapper* status,
+		IExternalContext* context, const ParseUnqualifiedNamesInput::Type* in, ParseUnqualifiedNamesOutput::Type* aOut)
+	: out(aOut)
+{
+	if (!in->namesNull)
+	{
+		const string namesStr(in->names.str, in->names.length);
+		MetaString::parseList(namesStr, resultEntries);
+	}
+
+	resultIterator = resultEntries.begin();
+}
+
+FB_BOOLEAN SqlPackage::ParseUnqualifiedNamesResultSet::fetch(ThrowStatusExceptionWrapper* status)
+{
+	if (resultIterator == resultEntries.end())
+		return false;
+
+	out->name.set(resultIterator->c_str(), resultIterator->length());
+	out->nameNull = FB_FALSE;
+	++resultIterator;
+
+	return true;
+}
+
+
+//--------------------------------------
+
+
 SqlPackage::SqlPackage(MemoryPool& pool)
 	: SystemPackage(
 		pool,
@@ -191,6 +224,21 @@ SqlPackage::SqlPackage(MemoryPool& pool)
 					{"RECORD_LENGTH", fld_integer, true},
 					{"KEY_LENGTH", fld_integer, true},
 					{"ACCESS_PATH", fld_description, false}
+				}
+			),
+			SystemProcedure(
+				pool,
+				"PARSE_UNQUALIFIED_NAMES",
+				SystemProcedureFactory<
+					ParseUnqualifiedNamesInput, ParseUnqualifiedNamesOutput, parseUnqualifiedNamesProcedure>(),
+				prc_selectable,
+				// input parameters
+				{
+					{"NAMES", fld_text_max, true}
+				},
+				// output parameters
+				{
+					{"NAME", fld_r_name, false}
 				}
 			),
 		},
