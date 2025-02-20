@@ -17,6 +17,7 @@ Output parameters:
 - `RECORD_SOURCE_ID` type `BIGINT NOT NULL` - record source id
 - `PARENT_RECORD_SOURCE_ID` type `BIGINT` - parent record source id
 - `LEVEL` type `INTEGER NOT NULL` - indentation level (may have gaps in relation to parent's level)
+- `SCHEMA_NAME` type `RDB$SCHEMA_NAME` - schema name of a stored procedure
 - `PACKAGE_NAME` type `RDB$PACKAGE_NAME` - package name of a stored procedure
 - `OBJECT_NAME` type `RDB$RELATION_NAME` - object (table, procedure) name
 - `ALIAS` type `RDB$SHORT_DESCRIPTION` - alias name
