@@ -5419,7 +5419,7 @@ dsc* evlMakeDbkey(Jrd::thread_db* tdbb, const SysFunction* function, const NestV
 		UCHAR* argPtr;
 		USHORT len = MOV_get_string(tdbb, argDsc, &argPtr, NULL, 0);
 		auto relName = QualifiedName::parseSchemaObject(string((const char*) argPtr, len));
-		attachment->qualifyExistingName(tdbb, relName, obj_relation);
+		attachment->qualifyExistingName(tdbb, relName, {obj_relation});
 
 		const jrd_rel* const relation = MET_lookup_relation(tdbb, relName);
 		if (!relation)

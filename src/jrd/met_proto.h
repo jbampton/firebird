@@ -27,6 +27,8 @@
 #include "../jrd/MetaName.h"
 #include "../jrd/QualifiedName.h"
 #include "../jrd/obj.h"
+#include <initializer_list>
+#include <optional>
 
 struct dsc;
 
@@ -150,9 +152,9 @@ void MET_store_dependencies(Jrd::thread_db*, Firebird::Array<Jrd::CompilerScratc
 
 int			MET_get_linger(Jrd::thread_db*);
 Firebird::TriState	MET_get_ss_definer(Jrd::thread_db*, const Jrd::MetaName& schemaName);
-bool MET_qualify_existing_name(Jrd::thread_db* tdbb, Jrd::QualifiedName& name, ObjectType objType,
+std::optional<ObjectType> MET_qualify_existing_name(Jrd::thread_db* tdbb, Jrd::QualifiedName& name,
+	std::initializer_list<ObjectType> objTypes,
 	const Firebird::ObjectsArray<Firebird::MetaString>* schemaSearchPath = nullptr);
-bool MET_check_package_exists(Jrd::thread_db* tdbb, const Jrd::QualifiedName& name);
 bool MET_check_schema_exists(Jrd::thread_db* tdbb, const Jrd::MetaName& name);
 
 #endif // JRD_MET_PROTO_H

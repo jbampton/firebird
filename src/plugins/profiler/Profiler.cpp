@@ -1440,12 +1440,12 @@ void ProfilerPlugin::loadMetadata(ThrowStatusExceptionWrapper* status)
 	constexpr auto loadObjectsSql =
 		R"""(
 		select *
-		    from plg$profiler.plg$prof_sessions
-		    cross join plg$profiler.plg$prof_statements
-		    cross join plg$profiler.plg$prof_record_sources
-		    cross join plg$profiler.plg$prof_requests
-		    cross join plg$profiler.plg$prof_psql_stats
-		    cross join plg$profiler.plg$prof_record_source_stats
+		    from plg$profiler%schema.plg$prof_sessions
+		    cross join plg$profiler%schema.plg$prof_statements
+		    cross join plg$profiler%schema.plg$prof_record_sources
+		    cross join plg$profiler%schema.plg$prof_requests
+		    cross join plg$profiler%schema.plg$prof_psql_stats
+		    cross join plg$profiler%schema.plg$prof_record_source_stats
 		    where next value for plg$profiler.plg$prof_profile_id = 0
 		)""";
 

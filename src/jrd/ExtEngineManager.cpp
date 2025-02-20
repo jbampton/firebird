@@ -599,7 +599,7 @@ private:
 		if (charSetNameBuffer[0])
 		{
 			charSetName = QualifiedName::parseSchemaObject(charSetNameBuffer);
-			attachment->qualifyExistingName(tdbb, charSetName, obj_charset);
+			attachment->qualifyExistingName(tdbb, charSetName, {obj_charset});
 		}
 
 		USHORT charSetId;
@@ -2012,7 +2012,7 @@ void ExtEngineManager::setupAdminCharSet(thread_db* tdbb, IExternalEngine* engin
 	if (charSetNameBuffer[0])
 	{
 		charSetName = QualifiedName::parseSchemaObject(charSetNameBuffer);
-		tdbb->getAttachment()->qualifyExistingName(tdbb, charSetName, obj_charset);
+		tdbb->getAttachment()->qualifyExistingName(tdbb, charSetName, {obj_charset});
 	}
 
 	if (!MET_get_char_coll_subtype(tdbb, &attInfo->adminCharSet, charSetName))

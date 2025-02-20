@@ -4009,7 +4009,7 @@ fetch_scroll($cursorStmtNode)
 
 %type <stmtNode> exec_procedure
 exec_procedure
-	: EXECUTE PROCEDURE qualified_name proc_inputs proc_outputs_opt
+	: EXECUTE PROCEDURE scoped_qualified_name proc_inputs proc_outputs_opt
 		{
 			$$ = newNode<ExecProcedureNode>(
 				*$3,
@@ -4037,7 +4037,7 @@ proc_outputs_opt
 
 %type <stmtNode> call
 call
-	: CALL qualified_name '(' argument_list_opt ')'
+	: CALL scoped_qualified_name '(' argument_list_opt ')'
 		{
 			auto node = newNode<ExecProcedureNode>(*$2,
 				($4 ? $4->second : nullptr),
@@ -6184,6 +6184,12 @@ ddl_type4
 	| FUNCTION				{ $$ = obj_udf; }
 	;
 
+%type <qualifiedNamePtr> scoped_qualified_name
+scoped_qualified_name
+	: qualified_name
+	| scoped_only_qualified_name
+	;
+
 %type <qualifiedNamePtr> qualified_name
 qualified_name
 	: valid_symbol_name
@@ -6194,9 +6200,23 @@ qualified_name
 		{ $$ = newNode<QualifiedName>(*$5, *$1, *$3); }
 	;
 
+%type <qualifiedNamePtr> scoped_only_qualified_name
+scoped_only_qualified_name
+	: valid_symbol_name '%' SCHEMA '.' valid_symbol_name
+		{
+			$$ = newNode<QualifiedName>(*$5, *$1);
+			$$->setUnambiguous(true);
+		}
+	| valid_symbol_name '%' PACKAGE '.' valid_symbol_name
+		{
+			$$ = newNode<QualifiedName>(*$5, MetaName(), *$1);
+			$$->setUnambiguous(true);
+		}
+	;
+
 %type <stringPtr> ddl_desc
 ddl_desc
-    : utf_string	{ $$ = $1; }
+	: utf_string	{ $$ = $1; }
 	| NULL			{ $$ = newString(""); }
 	;
 
@@ -6651,7 +6671,7 @@ named_columns_join
 
 %type <recSourceNode> table_proc
 table_proc
-	: qualified_name table_proc_inputs correlation_name_opt
+	: scoped_qualified_name table_proc_inputs correlation_name_opt
 		{
 			const auto node = newNode<ProcedureSourceNode>(*$1);
 			node->inputSources = $2 ? $2->second : nullptr;
@@ -9012,6 +9032,7 @@ symbol_UDF_call_name
 		{ $$ = newNode<QualifiedName>(*$3, *$1); }
 	| valid_symbol_name '.' valid_symbol_name '.' valid_symbol_name
 		{ $$ = newNode<QualifiedName>(*$5, *$1, *$3); }
+	| scoped_only_qualified_name
 	;
 
 %type <namedArguments> argument_list_opt

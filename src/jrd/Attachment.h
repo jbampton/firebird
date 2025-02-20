@@ -50,6 +50,7 @@
 #include "../jrd/sbm.h"
 
 #include <atomic>
+#include <initializer_list>
 
 #define DEBUG_LCK_LIST
 
@@ -864,7 +865,8 @@ public:
 	bool qualifyNewName(thread_db* tdbb, QualifiedName& name,
 		const Firebird::ObjectsArray<Firebird::MetaString>* schemaSearchPath = nullptr);
 
-	void qualifyExistingName(thread_db* tdbb, QualifiedName& name, ObjectType objType,
+	void qualifyExistingName(thread_db* tdbb, QualifiedName& name,
+		std::initializer_list<ObjectType> objTypes,
 		const Firebird::ObjectsArray<Firebird::MetaString>* schemaSearchPath = nullptr);
 
 private:

@@ -13826,38 +13826,11 @@ dsc* UdfCallNode::execute(thread_db* tdbb, Request* request) const
 
 ValueExprNode* UdfCallNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 {
+	const auto resolvedObject = dsqlScratch->resolveRoutineOrRelation(name, {obj_udf});
 	dsql_udf* function = nullptr;
 
-	if (name.package.isEmpty())
-	{
-		if (name.schema.isEmpty())
-		{
-			if (const auto subFunction = dsqlScratch->getSubFunction(name.object))
-				function = subFunction->dsqlFunction;
-			else if (dsqlScratch->package.object.hasData())
-			{
-				const QualifiedName packagedName(name.object, dsqlScratch->package.schema, dsqlScratch->package.object);
-				function = METD_get_function(dsqlScratch->getTransaction(), dsqlScratch, packagedName);
-			}
-
-			if (!function)
-				dsqlScratch->qualifyExistingName(name, obj_udf);
-		}
-		else
-		{
-			QualifiedName packageName(name.schema);
-			dsqlScratch->qualifyExistingName(packageName, obj_package_header);
-
-			if (MET_check_package_exists(JRD_get_thread_data(), packageName))
-			{
-				name.schema = packageName.schema;
-				name.package = packageName.object;
-			}
-		}
-	}
-
-	if (!function)
-		function = METD_get_function(dsqlScratch->getTransaction(), dsqlScratch, name);
+	if (const auto resolvedFunction = std::get_if<dsql_udf*>(&resolvedObject))
+		function = *resolvedFunction;
 
 	if (!function)
 	{
@@ -13873,8 +13846,6 @@ ValueExprNode* UdfCallNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 			function->udf_name.object <<
 			function->udf_name.getSchemaAndPackage().toQuotedString());
 	}
-
-	name = function->udf_name;
 
 	const auto node = FB_NEW_POOL(dsqlScratch->getPool()) UdfCallNode(dsqlScratch->getPool(), name,
 		doDsqlPass(dsqlScratch, args),

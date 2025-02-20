@@ -555,7 +555,7 @@ void Applier::insertRecord(thread_db* tdbb, TraNumber traNum,
 	TRA_attach_request(transaction, m_request);
 
 	QualifiedName qualifiedRelName(relName);
-	attachment->qualifyExistingName(tdbb, qualifiedRelName, obj_relation);
+	attachment->qualifyExistingName(tdbb, qualifiedRelName, {obj_relation});
 
 	const auto relation = MET_lookup_relation(tdbb, qualifiedRelName);
 	if (!relation)
@@ -714,7 +714,7 @@ void Applier::updateRecord(thread_db* tdbb, TraNumber traNum,
 	TRA_attach_request(transaction, m_request);
 
 	QualifiedName qualifiedRelName(relName);
-	attachment->qualifyExistingName(tdbb, qualifiedRelName, obj_relation);
+	attachment->qualifyExistingName(tdbb, qualifiedRelName, {obj_relation});
 
 	const auto relation = MET_lookup_relation(tdbb, qualifiedRelName);
 	if (!relation)
@@ -863,7 +863,7 @@ void Applier::deleteRecord(thread_db* tdbb, TraNumber traNum,
 	TRA_attach_request(transaction, m_request);
 
 	QualifiedName qualifiedRelName(relName);
-	attachment->qualifyExistingName(tdbb, qualifiedRelName, obj_relation);
+	attachment->qualifyExistingName(tdbb, qualifiedRelName, {obj_relation});
 
 	const auto relation = MET_lookup_relation(tdbb, qualifiedRelName);
 	if (!relation)
@@ -936,7 +936,7 @@ void Applier::setSequence(thread_db* tdbb, const QualifiedName& genName, SINT64 
 	const auto attachment = tdbb->getAttachment();
 
 	QualifiedName qualifiedGenName(genName);
-	attachment->qualifyExistingName(tdbb, qualifiedGenName, obj_generator);
+	attachment->qualifyExistingName(tdbb, qualifiedGenName, {obj_generator});
 
 	auto gen_id = attachment->att_generators.lookup(qualifiedGenName);
 

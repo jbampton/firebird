@@ -162,12 +162,7 @@ end;
 ### Resolving between `PACKAGE.OBJECT` and `SCHEMA.OBJECT`
 
 The syntax `<name>.<name>` introduces ambiguity between `<package>.<object>` and `<schema>.<object>` when referring to 
-procedures and functions.
-
-In such cases, the system first searches for a package name using the search path. If a matching package is found, the 
-name is resolved as `<package>.<object>` within the schema where the package resides.
-
-If no package is found, the name is interpreted as a fully qualified `<schema>.<object>` instead.
+procedures and functions. See [name resolution](README.name_resolution.md) for details.
 
 ## Permissions
 

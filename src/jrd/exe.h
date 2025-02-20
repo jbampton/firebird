@@ -548,10 +548,10 @@ public:
 
 			schemaSearchPath.push(csb_schema);
 
-			attachment->qualifyExistingName(tdbb, name, objType, &schemaSearchPath);
+			attachment->qualifyExistingName(tdbb, name, {objType}, &schemaSearchPath);
 		}
 		else
-			attachment->qualifyExistingName(tdbb, name, objType);
+			attachment->qualifyExistingName(tdbb, name, {objType});
 	}
 
 #ifdef CMP_DEBUG

@@ -30,7 +30,9 @@
 #include "../dsql/errd_proto.h"
 #include "../dsql/gen_proto.h"
 #include "../dsql/make_proto.h"
+#include "../dsql/metd_proto.h"
 #include "../dsql/pass1_proto.h"
+#include <unordered_set>
 
 using namespace Firebird;
 using namespace Jrd;
@@ -72,7 +74,7 @@ void DsqlCompilerScratch::qualifyNewName(QualifiedName& name) const
 	}
 }
 
-void DsqlCompilerScratch::qualifyExistingName(QualifiedName& name, ObjectType objectType)
+void DsqlCompilerScratch::qualifyExistingName(QualifiedName& name, std::initializer_list<ObjectType> objectTypes)
 {
 	if (!(name.schema.isEmpty() && name.object.hasData()))
 		return;
@@ -96,10 +98,123 @@ void DsqlCompilerScratch::qualifyExistingName(QualifiedName& name, ObjectType ob
 			}
 		}
 
-		attachment->qualifyExistingName(tdbb, name, objectType, cachedDdlSchemaSearchPath);
+		attachment->qualifyExistingName(tdbb, name, objectTypes, cachedDdlSchemaSearchPath);
 	}
 	else
-		attachment->qualifyExistingName(tdbb, name, objectType);
+		attachment->qualifyExistingName(tdbb, name, objectTypes);
+}
+
+
+std::variant<std::monostate, dsql_prc*, dsql_rel*, dsql_udf*> DsqlCompilerScratch::resolveRoutineOrRelation(
+	QualifiedName& name, std::initializer_list<ObjectType> objectTypes)
+{
+	const std::unordered_set<ObjectType> objectTypesSet(objectTypes);
+	const bool searchProcedures = objectTypesSet.find(obj_procedure) != objectTypesSet.end();
+	const bool searchRelations = objectTypesSet.find(obj_relation) != objectTypesSet.end();
+	const bool searchFunctions = objectTypesSet.find(obj_udf) != objectTypesSet.end();
+	fb_assert((searchProcedures || searchRelations) != searchFunctions);
+
+	std::variant<std::monostate, dsql_prc*, dsql_rel*, dsql_udf*> object;
+
+	const auto notFound = [&]()
+	{
+		return std::holds_alternative<std::monostate>(object);
+	};
+
+	const auto setObject = [&](const auto value)
+	{
+		if (value)
+			object = value;
+	};
+
+	// search subroutine: name
+	if (name.schema.isEmpty() &&
+		name.package.isEmpty())
+	{
+		if (searchProcedures)
+		{
+			if (const auto subProcedure = getSubProcedure(name.object))
+				setObject(subProcedure->dsqlProcedure);
+		}
+
+		if (searchFunctions)
+		{
+			if (const auto subFunction = getSubFunction(name.object))
+				setObject(subFunction->dsqlFunction);
+		}
+	}
+
+	// search packaged routine in the same package: name, same_package.name
+	if (notFound() &&
+		package.object.hasData() &&
+		name.package.isEmpty() &&
+		(name.schema.isEmpty() ||
+			(!name.isUnambiguous() && name.schema == package.object)))
+	{
+		const QualifiedName routineName(name.object, package.schema, package.object);
+
+		if (searchProcedures)
+			setObject(METD_get_procedure(getTransaction(), this, routineName));
+
+		if (searchFunctions)
+			setObject(METD_get_function(getTransaction(), this, routineName));
+	}
+
+	// search standalone routine or relation: name, name1%schema.name2, name1.name2
+	if (notFound() &&
+		name.package.isEmpty())
+	{
+		auto qualifiedName = name;
+		qualifyExistingName(qualifiedName, objectTypes);
+
+		if (searchProcedures)
+			setObject(METD_get_procedure(getTransaction(), this, qualifiedName));
+
+		if (searchRelations)
+			setObject(METD_get_relation(getTransaction(), this, qualifiedName));
+
+		if (searchFunctions)
+			setObject(METD_get_function(getTransaction(), this, qualifiedName));
+	}
+
+	// search packaged routine: name1%package.name2, name1.name2.name3
+	if (notFound() &&
+		name.package.hasData())
+	{
+		auto qualifiedName = name;
+		qualifyExistingName(qualifiedName, objectTypes);
+
+		if (searchProcedures)
+			setObject(METD_get_procedure(getTransaction(), this, qualifiedName));
+
+		if (searchFunctions)
+			setObject(METD_get_function(getTransaction(), this, qualifiedName));
+	}
+
+	// search packaged routine: name1.name2
+	if (notFound() &&
+		!name.isUnambiguous() &&
+		name.schema.hasData() &&
+		name.package.isEmpty())
+	{
+		QualifiedName qualifiedName(name.object, {}, name.schema);
+		qualifyExistingName(qualifiedName, objectTypes);
+
+		if (searchProcedures)
+			setObject(METD_get_procedure(getTransaction(), this, qualifiedName));
+
+		if (searchFunctions)
+			setObject(METD_get_function(getTransaction(), this, qualifiedName));
+	}
+
+	if (const auto procedure = std::get_if<dsql_prc*>(&object))
+		name = (*procedure)->prc_name;
+	else if (const auto relation = std::get_if<dsql_rel*>(&object))
+		name = (*relation)->rel_name;
+	else if (const auto function = std::get_if<dsql_udf*>(&object))
+		name = (*function)->udf_name;
+
+	return object;
 }
 
 

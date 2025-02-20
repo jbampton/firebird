@@ -3437,41 +3437,11 @@ DmlNode* ExecProcedureNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScr
 
 ExecProcedureNode* ExecProcedureNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 {
+	const auto resolvedObject = dsqlScratch->resolveRoutineOrRelation(dsqlName, {obj_procedure});
 	dsql_prc* procedure = nullptr;
 
-	if (dsqlName.package.isEmpty())
-	{
-		if (dsqlName.schema.isEmpty())
-		{
-			if (const auto subProcedure = dsqlScratch->getSubProcedure(dsqlName.object))
-				procedure = subProcedure->dsqlProcedure;
-			else if (dsqlScratch->package.object.hasData())
-			{
-				const QualifiedName packagedName(dsqlName.object,
-					dsqlScratch->package.schema, dsqlScratch->package.object);
-
-				if ((procedure = METD_get_procedure(dsqlScratch->getTransaction(), dsqlScratch, packagedName)))
-					dsqlName = packagedName;
-			}
-
-			if (!procedure)
-				dsqlScratch->qualifyExistingName(dsqlName, obj_procedure);
-		}
-		else
-		{
-			QualifiedName packageName(dsqlName.schema);
-			dsqlScratch->qualifyExistingName(packageName, obj_package_header);
-
-			if (MET_check_package_exists(JRD_get_thread_data(), packageName))
-			{
-				dsqlName.schema = packageName.schema;
-				dsqlName.package = packageName.object;
-			}
-		}
-	}
-
-	if (!procedure)
-		procedure = METD_get_procedure(dsqlScratch->getTransaction(), dsqlScratch, dsqlName);
+	if (const auto resolvedProcedure = std::get_if<dsql_prc*>(&resolvedObject))
+		procedure = *resolvedProcedure;
 
 	if (!procedure)
 	{
@@ -3487,8 +3457,6 @@ ExecProcedureNode* ExecProcedureNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 			procedure->prc_name.object <<
 			procedure->prc_name.getSchemaAndPackage().toQuotedString());
 	}
-
-	dsqlName = procedure->prc_name;
 
 	if (!dsqlScratch->isPsql())
 		dsqlScratch->getDsqlStatement()->setType(DsqlStatement::TYPE_EXEC_PROCEDURE);

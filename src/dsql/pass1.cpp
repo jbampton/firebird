@@ -378,48 +378,15 @@ dsql_ctx* PASS1_make_context(DsqlCompilerScratch* dsqlScratch, RecordSourceNode*
 	}
 	else
 	{
-		auto qualifiedName = name;
+		const auto resolvedObject = dsqlScratch->resolveRoutineOrRelation(name,
+			((name.package.hasData() || (procNode && procNode->inputSources)) ?
+				std::initializer_list<ObjectType>{obj_procedure} :
+				std::initializer_list<ObjectType>{obj_procedure, obj_relation}));
 
-		if (name.package.isEmpty())
-		{
-			if (name.schema.isEmpty())
-			{
-				if (const auto subProcedure = dsqlScratch->getSubProcedure(name.object))
-					procedure = subProcedure->dsqlProcedure;
-				else if (dsqlScratch->package.object.hasData())
-				{
-					const QualifiedName packagedName(name.object,
-						dsqlScratch->package.schema, dsqlScratch->package.object);
-
-					if ((procedure = METD_get_procedure(dsqlScratch->getTransaction(), dsqlScratch, packagedName)))
-						qualifiedName = packagedName;
-				}
-
-				if (!procedure)
-					dsqlScratch->qualifyExistingName(qualifiedName, obj_procedure);
-			}
-			else
-			{
-				QualifiedName packageName(name.schema);
-				dsqlScratch->qualifyExistingName(packageName, obj_package_header);
-
-				if (MET_check_package_exists(tdbb, packageName))
-				{
-					qualifiedName.schema = packageName.schema;
-					qualifiedName.package = packageName.object;
-				}
-			}
-		}
-
-		if (!procedure)
-			procedure = METD_get_procedure(dsqlScratch->getTransaction(), dsqlScratch, qualifiedName);
-
-		if (!procedure && !(name.package.hasData() || (procNode && procNode->inputSources)))
-		{
-			qualifiedName = name;
-			dsqlScratch->qualifyExistingName(qualifiedName, obj_relation);
-			relation = METD_get_relation(dsqlScratch->getTransaction(), dsqlScratch, qualifiedName);
-		}
+		if (const auto resolvedProcedure = std::get_if<dsql_prc*>(&resolvedObject))
+			procedure = *resolvedProcedure;
+		else if (const auto resolvedRelation = std::get_if<dsql_rel*>(&resolvedObject))
+			relation = *resolvedRelation;
 
 		if (!procedure && !relation)
 		{
@@ -432,8 +399,6 @@ dsql_ctx* PASS1_make_context(DsqlCompilerScratch* dsqlScratch, RecordSourceNode*
 				Arg::Gds(isc_random) << name.toQuotedString() <<
 				Arg::Gds(isc_dsql_line_col_error) << Arg::Num(relationNode->line) << Arg::Num(relationNode->column));
 		}
-
-		name = qualifiedName;
 
 		if (procedure)
 		{

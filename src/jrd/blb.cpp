@@ -1757,7 +1757,7 @@ void blb::put_slice(thread_db*	tdbb,
 	if (info.sdl_info_relation.object.hasData())
 	{
 		QualifiedName infoRelationName(info.sdl_info_relation);
-		tdbb->getAttachment()->qualifyExistingName(tdbb, infoRelationName, obj_relation);
+		tdbb->getAttachment()->qualifyExistingName(tdbb, infoRelationName, {obj_relation});
 
 		relation = MET_lookup_relation(tdbb, infoRelationName);
 	}

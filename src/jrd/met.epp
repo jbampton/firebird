@@ -5572,8 +5572,8 @@ TriState MET_get_ss_definer(Jrd::thread_db* tdbb, const MetaName& schemaName)
 	return r;
 }
 
-bool MET_qualify_existing_name(thread_db* tdbb, QualifiedName& name, ObjectType objType,
-	const ObjectsArray<MetaString>* schemaSearchPath)
+std::optional<ObjectType> MET_qualify_existing_name(thread_db* tdbb, QualifiedName& name,
+	std::initializer_list<ObjectType> objTypes, const ObjectsArray<MetaString>* schemaSearchPath)
 {
 	fb_assert(name.object.hasData() && name.schema.isEmpty());
 
@@ -5587,248 +5587,234 @@ bool MET_qualify_existing_name(thread_db* tdbb, QualifiedName& name, ObjectType 
 	{
 		bool found = false;
 
-		switch (objType)
+		for (const auto objType : objTypes)
 		{
-			case obj_charset:
+			switch (objType)
 			{
-				if (searchSchema == SYSTEM_SCHEMA)
+				case obj_charset:
 				{
-					USHORT charSetId = 0;
-					if (get_type(tdbb, &charSetId, name.object, "RDB$CHARACTER_SET_NAME"))
+					if (searchSchema == SYSTEM_SCHEMA)
+					{
+						USHORT charSetId = 0;
+						if (get_type(tdbb, &charSetId, name.object, "RDB$CHARACTER_SET_NAME"))
+						{
+							found = true;
+							break;
+						}
+					}
+
+					static const CachedRequestId charSetHandleId;
+					handle.reset(tdbb, charSetHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						CS IN RDB$CHARACTER_SETS
+						WITH CS.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 CS.RDB$CHARACTER_SET_NAME EQ name.object.c_str()
 					{
 						found = true;
 						break;
 					}
-				}
+					END_FOR
 
-				static const CachedRequestId charSetHandleId;
-				handle.reset(tdbb, charSetHandleId);
-
-				FOR (REQUEST_HANDLE handle)
-					CS IN RDB$CHARACTER_SETS
-					WITH CS.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-						 CS.RDB$CHARACTER_SET_NAME EQ name.object.c_str()
-				{
-					found = true;
 					break;
 				}
-				END_FOR
 
-				break;
+				case obj_collation:
+				{
+					static const CachedRequestId collationHandleId;
+					handle.reset(tdbb, collationHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						COLL IN RDB$COLLATIONS
+						WITH COLL.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 COLL.RDB$COLLATION_NAME EQ name.object.c_str()
+					{
+						found = true;
+						break;
+					}
+					END_FOR
+
+					break;
+				}
+
+				case obj_exception:
+				{
+					static const CachedRequestId exceptionHandleId;
+					handle.reset(tdbb, exceptionHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						XCP IN RDB$EXCEPTIONS
+						WITH XCP.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 XCP.RDB$EXCEPTION_NAME EQ name.object.c_str()
+					{
+						found = true;
+						break;
+					}
+					END_FOR
+
+					break;
+				}
+
+				case obj_field:
+				{
+					static const CachedRequestId fieldHandleId;
+					handle.reset(tdbb, fieldHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						FLD IN RDB$FIELDS
+						WITH FLD.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 FLD.RDB$FIELD_NAME EQ name.object.c_str()
+					{
+						found = true;
+						break;
+					}
+					END_FOR
+
+					break;
+				}
+
+				case obj_generator:
+				{
+					static const CachedRequestId generatorHandleId;
+					handle.reset(tdbb, generatorHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						GEN IN RDB$GENERATORS
+						WITH GEN.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 GEN.RDB$GENERATOR_NAME EQ name.object.c_str()
+					{
+						found = true;
+						break;
+					}
+					END_FOR
+
+					break;
+				}
+
+				case obj_index:
+				{
+					static const CachedRequestId indexHandleId;
+					handle.reset(tdbb, indexHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						IDX IN RDB$INDICES
+						WITH IDX.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 IDX.RDB$INDEX_NAME EQ name.object.c_str()
+					{
+						found = true;
+						break;
+					}
+					END_FOR
+
+					break;
+				}
+
+				case obj_package_header:
+				{
+					static const CachedRequestId packageHandleId;
+					handle.reset(tdbb, packageHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						PKG IN RDB$PACKAGES
+						WITH PKG.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 PKG.RDB$PACKAGE_NAME EQ name.object.c_str()
+					{
+						found = true;
+						break;
+					}
+					END_FOR
+
+					break;
+				}
+
+				case obj_procedure:
+				{
+					static const CachedRequestId procedureHandleId;
+					handle.reset(tdbb, procedureHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						PRC IN RDB$PROCEDURES
+						WITH PRC.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 PRC.RDB$PROCEDURE_NAME EQ name.object.c_str() AND
+							 PRC.RDB$PACKAGE_NAME EQUIV NULLIF(name.package.c_str(), '')
+					{
+						found = true;
+						break;
+					}
+					END_FOR
+
+					break;
+				}
+
+				case obj_relation:
+				case obj_view:
+				{
+					static const CachedRequestId relationHandleId;
+					handle.reset(tdbb, relationHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						REL IN RDB$RELATIONS
+						WITH REL.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 REL.RDB$RELATION_NAME EQ name.object.c_str()
+					{
+						found = true;
+						break;
+					}
+					END_FOR
+
+					break;
+				}
+
+				case obj_trigger:
+				{
+					static const CachedRequestId triggerHandleId;
+					handle.reset(tdbb, triggerHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						TRG IN RDB$TRIGGERS
+						WITH TRG.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 TRG.RDB$TRIGGER_NAME EQ name.object.c_str()
+					{
+						found = true;
+						break;
+					}
+					END_FOR
+
+					break;
+				}
+
+				case obj_udf:
+				{
+					static const CachedRequestId udfHandleId;
+					handle.reset(tdbb, udfHandleId);
+
+					FOR (REQUEST_HANDLE handle)
+						FUN IN RDB$FUNCTIONS
+						WITH FUN.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+							 FUN.RDB$FUNCTION_NAME EQ name.object.c_str() AND
+							 FUN.RDB$PACKAGE_NAME EQUIV NULLIF(name.package.c_str(), '')
+					{
+						found = true;
+						break;
+					}
+					END_FOR
+
+					break;
+				}
+
+				default:
+					fb_assert(false);
 			}
 
-			case obj_collation:
+			if (found)
 			{
-				static const CachedRequestId collationHandleId;
-				handle.reset(tdbb, collationHandleId);
-
-				FOR (REQUEST_HANDLE handle)
-					COLL IN RDB$COLLATIONS
-					WITH COLL.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-						 COLL.RDB$COLLATION_NAME EQ name.object.c_str()
-				{
-					found = true;
-					break;
-				}
-				END_FOR
-
-				break;
+				name.schema = searchSchema;
+				return objType;
 			}
-
-			case obj_exception:
-			{
-				static const CachedRequestId exceptionHandleId;
-				handle.reset(tdbb, exceptionHandleId);
-
-				FOR (REQUEST_HANDLE handle)
-					XCP IN RDB$EXCEPTIONS
-					WITH XCP.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-						 XCP.RDB$EXCEPTION_NAME EQ name.object.c_str()
-				{
-					found = true;
-					break;
-				}
-				END_FOR
-
-				break;
-			}
-
-			case obj_field:
-			{
-				static const CachedRequestId fieldHandleId;
-				handle.reset(tdbb, fieldHandleId);
-
-				FOR (REQUEST_HANDLE handle)
-					FLD IN RDB$FIELDS
-					WITH FLD.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-						 FLD.RDB$FIELD_NAME EQ name.object.c_str()
-				{
-					found = true;
-					break;
-				}
-				END_FOR
-
-				break;
-			}
-
-			case obj_generator:
-			{
-				static const CachedRequestId generatorHandleId;
-				handle.reset(tdbb, generatorHandleId);
-
-				FOR (REQUEST_HANDLE handle)
-					GEN IN RDB$GENERATORS
-					WITH GEN.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-						 GEN.RDB$GENERATOR_NAME EQ name.object.c_str()
-				{
-					found = true;
-					break;
-				}
-				END_FOR
-
-				break;
-			}
-
-			case obj_index:
-			{
-				static const CachedRequestId indexHandleId;
-				handle.reset(tdbb, indexHandleId);
-
-				FOR (REQUEST_HANDLE handle)
-					IDX IN RDB$INDICES
-					WITH IDX.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-						 IDX.RDB$INDEX_NAME EQ name.object.c_str()
-				{
-					found = true;
-					break;
-				}
-				END_FOR
-
-				break;
-			}
-
-			case obj_package_header:
-			{
-				static const CachedRequestId packageHandleId;
-				handle.reset(tdbb, packageHandleId);
-
-				FOR (REQUEST_HANDLE handle)
-					PKG IN RDB$PACKAGES
-					WITH PKG.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-						 PKG.RDB$PACKAGE_NAME EQ name.object.c_str()
-				{
-					found = true;
-					break;
-				}
-				END_FOR
-
-				break;
-			}
-
-			case obj_procedure:
-			case obj_relation:
-			case obj_view:
-			{
-				static const CachedRequestId procedureHandleId;
-				handle.reset(tdbb, procedureHandleId);
-
-				FOR (REQUEST_HANDLE handle)
-					PRC IN RDB$PROCEDURES
-					WITH PRC.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-						 PRC.RDB$PROCEDURE_NAME EQ name.object.c_str() AND
-						 PRC.RDB$PACKAGE_NAME MISSING
-				{
-					found = true;
-					break;
-				}
-				END_FOR
-
-				static const CachedRequestId relationHandleId;
-				handle.reset(tdbb, relationHandleId);
-
-				FOR (REQUEST_HANDLE handle)
-					REL IN RDB$RELATIONS
-					WITH REL.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-						 REL.RDB$RELATION_NAME EQ name.object.c_str()
-				{
-					found = true;
-					break;
-				}
-				END_FOR
-
-				break;
-			}
-
-			case obj_trigger:
-			{
-				static const CachedRequestId triggerHandleId;
-				handle.reset(tdbb, triggerHandleId);
-
-				FOR (REQUEST_HANDLE handle)
-					TRG IN RDB$TRIGGERS
-					WITH TRG.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-						 TRG.RDB$TRIGGER_NAME EQ name.object.c_str()
-				{
-					found = true;
-					break;
-				}
-				END_FOR
-
-				break;
-			}
-
-			case obj_udf:
-			{
-				static const CachedRequestId udfHandleId;
-				handle.reset(tdbb, udfHandleId);
-
-				FOR (REQUEST_HANDLE handle)
-					FUN IN RDB$FUNCTIONS
-					WITH FUN.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-						 FUN.RDB$FUNCTION_NAME EQ name.object.c_str() AND
-						 FUN.RDB$PACKAGE_NAME MISSING
-				{
-					found = true;
-					break;
-				}
-				END_FOR
-
-				break;
-			}
-
-			default:
-				fb_assert(false);
-		}
-
-		if (found)
-		{
-			name.schema = searchSchema;
-			return true;
 		}
 	}
 
-	return false;
-}
-
-bool MET_check_package_exists(thread_db* tdbb, const QualifiedName& name)
-{
-	fb_assert(name.package.isEmpty());
-
-	const auto attachment = tdbb->getAttachment();
-
-	static const CachedRequestId cachedHandleId;
-	AutoCacheRequest handle(tdbb, cachedHandleId);
-
-	FOR (REQUEST_HANDLE handle)
-		PKG IN RDB$PACKAGES
-		WITH PKG.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
-			 PKG.RDB$PACKAGE_NAME EQ name.object.c_str()
-	{
-		return true;
-	}
-	END_FOR
-
-	return false;
+	return std::nullopt;
 }
 
 bool MET_check_schema_exists(thread_db* tdbb, const MetaName& name)

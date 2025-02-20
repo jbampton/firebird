@@ -52,14 +52,16 @@ public:
 	BaseQualifiedName(MemoryPool& p, const BaseQualifiedName& src)
 		: object(p, src.object),
 		  schema(p, src.schema),
-		  package(p, src.package)
+		  package(p, src.package),
+		  unambiguous(src.isUnambiguous())
 	{
 	}
 
 	BaseQualifiedName(const BaseQualifiedName& src)
 		: object(src.object),
 		  schema(src.schema),
-		  package(src.package)
+		  package(src.package),
+		  unambiguous(src.isUnambiguous())
 	{
 	}
 
@@ -67,7 +69,8 @@ public:
 	BaseQualifiedName(const BaseQualifiedName<TT>& src)
 		: object(src.object),
 		  schema(src.schema),
-		  package(src.package)
+		  package(src.package),
+		  unambiguous(src.isUnambiguous())
 	{
 	}
 
@@ -222,6 +225,16 @@ public:
 	}
 
 public:
+	bool isUnambiguous() const
+	{
+		return unambiguous;
+	}
+
+	void setUnambiguous(bool value)
+	{
+		unambiguous = value;
+	}
+
 	BaseQualifiedName getSchemaAndPackage() const
 	{
 		return BaseQualifiedName(package, schema);
@@ -263,6 +276,9 @@ public:
 	T object;
 	T schema;
 	T package;
+
+private:
+	bool unambiguous = false;
 };
 
 using QualifiedMetaString = Firebird::BaseQualifiedName<MetaString>;

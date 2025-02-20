@@ -30,7 +30,9 @@
 #include "../jrd/MetaName.h"
 #include "../common/classes/stack.h"
 #include "../common/classes/alloc.h"
+#include <initializer_list>
 #include <optional>
+#include <variant>
 
 namespace Jrd
 {
@@ -153,7 +155,15 @@ public:
 	}
 
 	void qualifyNewName(QualifiedName& name) const;
-	void qualifyExistingName(QualifiedName& name, ObjectType objectType);
+	void qualifyExistingName(QualifiedName& name, std::initializer_list<ObjectType> objectTypes);
+
+	void qualifyExistingName(QualifiedName& name, ObjectType objectType)
+	{
+		qualifyExistingName(name, {objectType});
+	}
+
+	std::variant<std::monostate, dsql_prc*, dsql_rel*, dsql_udf*> resolveRoutineOrRelation(QualifiedName& name,
+		std::initializer_list<ObjectType> objectTypes);
 
 	void putBlrMarkers(ULONG marks);
 	void putDtype(const TypeClause* field, bool useSubType);

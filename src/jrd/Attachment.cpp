@@ -1228,14 +1228,14 @@ bool Attachment::qualifyNewName(thread_db* tdbb, QualifiedName& name, const Obje
 	return MET_check_schema_exists(tdbb, name.schema);
 }
 
-void Attachment::qualifyExistingName(thread_db* tdbb, QualifiedName& name, ObjectType objType,
-	const ObjectsArray<MetaString>* schemaSearchPath)
+void Attachment::qualifyExistingName(thread_db* tdbb, QualifiedName& name,
+	std::initializer_list<ObjectType> objTypes, const ObjectsArray<MetaString>* schemaSearchPath)
 {
 	if (name.object.hasData())
 	{
 		if (name.schema.isEmpty())
 		{
-			if (!MET_qualify_existing_name(tdbb, name, objType, schemaSearchPath))
+			if (!MET_qualify_existing_name(tdbb, name, objTypes, schemaSearchPath))
 				qualifyNewName(tdbb, name, schemaSearchPath);
 		}
 	}
