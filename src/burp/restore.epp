@@ -8577,6 +8577,7 @@ bool get_schema(BurpGlobals* tdgbl)
 		X.RDB$SCHEMA_NAME.NULL = TRUE;
 		X.RDB$CHARACTER_SET_SCHEMA_NAME.NULL = TRUE;
 		X.RDB$CHARACTER_SET_NAME.NULL = TRUE;
+		X.RDB$SQL_SECURITY.NULL = TRUE;
 		X.RDB$SECURITY_CLASS.NULL = TRUE;
 		X.RDB$OWNER_NAME.NULL = TRUE;
 		X.RDB$DESCRIPTION.NULL = TRUE;
@@ -8603,6 +8604,11 @@ bool get_schema(BurpGlobals* tdgbl)
 				case att_schema_charset_name:
 					GET_TEXT(X.RDB$CHARACTER_SET_NAME);
 					X.RDB$CHARACTER_SET_NAME.NULL = FALSE;
+					break;
+
+				case att_schema_sql_security:
+					X.RDB$SQL_SECURITY = get_boolean(tdgbl, false);
+					X.RDB$SQL_SECURITY.NULL = FALSE;
 					break;
 
 				case att_schema_security_class:

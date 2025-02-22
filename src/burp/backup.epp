@@ -4211,6 +4211,9 @@ void write_schemas()
 		if (!X.RDB$CHARACTER_SET_NAME.NULL)
 			PUT_TEXT(att_schema_charset_name, X.RDB$CHARACTER_SET_NAME);
 
+		if (!X.RDB$SQL_SECURITY.NULL)
+			put_boolean(att_schema_sql_security, X.RDB$SQL_SECURITY);
+
 		if (!X.RDB$SECURITY_CLASS.NULL)
 			PUT_TEXT(att_schema_security_class, X.RDB$SECURITY_CLASS);
 

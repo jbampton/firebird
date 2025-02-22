@@ -696,6 +696,7 @@ enum att_type {
 	att_schema_name = SERIES,
 	att_schema_charset_schema_name,
 	att_schema_charset_name,
+	att_schema_sql_security,
 	att_schema_security_class,
 	att_schema_owner_name,
 	att_schema_description,
