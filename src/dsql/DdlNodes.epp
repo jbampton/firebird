@@ -4400,7 +4400,7 @@ void DropCollationNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratc
 			RF IN RDB$RELATION_FIELDS
 			CROSS F IN RDB$FIELDS
 			WITH RF.RDB$COLLATION_ID EQ COLL.RDB$COLLATION_ID AND
-				 F.RDB$SCHEMA_NAME EQUIV RF.RDB$FIELD_SOURCE_SCHEMA_NAME AND
+				 F.RDB$SCHEMA_NAME EQ RF.RDB$FIELD_SOURCE_SCHEMA_NAME AND
 				 F.RDB$FIELD_NAME EQ RF.RDB$FIELD_SOURCE AND
 				 F.RDB$CHARACTER_SET_ID EQ COLL.RDB$CHARACTER_SET_ID
 
@@ -4421,7 +4421,7 @@ void DropCollationNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratc
 			PRM IN RDB$PROCEDURE_PARAMETERS
 			CROSS F IN RDB$FIELDS
 			WITH PRM.RDB$COLLATION_ID EQ COLL.RDB$COLLATION_ID AND
-				 F.RDB$SCHEMA_NAME EQUIV PRM.RDB$FIELD_SOURCE_SCHEMA_NAME AND
+				 F.RDB$SCHEMA_NAME EQ PRM.RDB$FIELD_SOURCE_SCHEMA_NAME AND
 				 F.RDB$FIELD_NAME EQ PRM.RDB$FIELD_SOURCE AND
 				 F.RDB$CHARACTER_SET_ID EQ COLL.RDB$CHARACTER_SET_ID
 
@@ -4443,7 +4443,7 @@ void DropCollationNode::execute(thread_db* tdbb, DsqlCompilerScratch* dsqlScratc
 			ARG IN RDB$FUNCTION_ARGUMENTS
 			CROSS F IN RDB$FIELDS
 			WITH ARG.RDB$COLLATION_ID EQ COLL.RDB$COLLATION_ID AND
-				 F.RDB$SCHEMA_NAME EQUIV ARG.RDB$FIELD_SOURCE_SCHEMA_NAME AND
+				 F.RDB$SCHEMA_NAME EQ ARG.RDB$FIELD_SOURCE_SCHEMA_NAME AND
 				 F.RDB$FIELD_NAME EQ ARG.RDB$FIELD_SOURCE AND
 				 F.RDB$CHARACTER_SET_ID EQ COLL.RDB$CHARACTER_SET_ID
 
@@ -5617,8 +5617,7 @@ void DropDomainNode::check(thread_db* tdbb, jrd_tra* transaction)
 		// msg 239: "Domain %s is used in procedure %s (parameter name %s) and cannot be dropped"
 		status_exception::raise(
 			Arg::PrivateDyn(239) << name.toQuotedString() <<
-				QualifiedName(X.RDB$PROCEDURE_NAME, X.RDB$SCHEMA_NAME,
-					(X.RDB$PACKAGE_NAME.NULL ? NULL : X.RDB$PACKAGE_NAME)).toQuotedString() <<
+				QualifiedName(X.RDB$PROCEDURE_NAME, X.RDB$SCHEMA_NAME, X.RDB$PACKAGE_NAME).toQuotedString() <<
 				MetaName(X.RDB$PARAMETER_NAME).toQuotedString());
 	}
 	END_FOR
@@ -5635,8 +5634,7 @@ void DropDomainNode::check(thread_db* tdbb, jrd_tra* transaction)
 		// msg 239: "Domain %s is used in function %s (parameter name %s) and cannot be dropped"
 		status_exception::raise(
 			Arg::Gds(isc_dyn_domain_used_function) << name.toQuotedString() <<
-				QualifiedName(X.RDB$FUNCTION_NAME, X.RDB$SCHEMA_NAME,
-					(X.RDB$PACKAGE_NAME.NULL ? NULL : X.RDB$PACKAGE_NAME)).toQuotedString() <<
+				QualifiedName(X.RDB$FUNCTION_NAME, X.RDB$SCHEMA_NAME, X.RDB$PACKAGE_NAME).toQuotedString() <<
 				MetaName(X.RDB$ARGUMENT_NAME).toQuotedString());
 	}
 	END_FOR
@@ -6612,7 +6610,7 @@ bool RelationNode::deleteLocalField(thread_db* tdbb, jrd_tra* transaction,
 
 		found = true;
 		DropRelationNode::deleteGlobalField(tdbb, transaction,
-			QualifiedName(RFR.RDB$FIELD_SOURCE, RFR.RDB$SCHEMA_NAME));
+			QualifiedName(RFR.RDB$FIELD_SOURCE, RFR.RDB$FIELD_SOURCE_SCHEMA_NAME));
 	}
 	END_FOR
 
@@ -6620,7 +6618,7 @@ bool RelationNode::deleteLocalField(thread_db* tdbb, jrd_tra* transaction,
 
 	FOR(REQUEST_HANDLE request TRANSACTION_HANDLE transaction)
 		PRIV IN RDB$USER_PRIVILEGES
-		WITH PRIV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(relationName.schema.c_str(), '') AND
+		WITH PRIV.RDB$RELATION_SCHEMA_NAME EQ relationName.schema.c_str() AND
 			 PRIV.RDB$RELATION_NAME EQ relationName.object.c_str() AND
 			 PRIV.RDB$FIELD_NAME EQ fieldName.c_str() AND
 		     PRIV.RDB$OBJECT_TYPE = obj_relation AND
@@ -6774,7 +6772,9 @@ void RelationNode::defineField(thread_db* tdbb, DsqlCompilerScratch* dsqlScratch
 			if (!desc.isExact() || desc.dsc_scale != 0)
 			{
 				// Identity column @1 of table @2 must be exact numeric with zero scale.
-				status_exception::raise(Arg::PrivateDyn(273) << field->fld_name << name.toQuotedString());
+				status_exception::raise(Arg::PrivateDyn(273) <<
+					field->fld_name.toQuotedString() <<
+					name.toQuotedString());
 			}
 
 			fieldDefinition.identitySequence.schema = fieldDefinition.relationName.schema;
@@ -7150,7 +7150,7 @@ void RelationNode::defineConstraint(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 			 RFR.RDB$SCHEMA_NAME EQ IDS.RDB$SCHEMA_NAME AND
 			 RFR.RDB$RELATION_NAME EQ name.object.c_str() AND
 			 RFR.RDB$FIELD_NAME EQ IDS.RDB$FIELD_NAME AND
-			 FLX.RDB$SCHEMA_NAME EQUIV RFR.RDB$FIELD_SOURCE_SCHEMA_NAME AND
+			 FLX.RDB$SCHEMA_NAME EQ RFR.RDB$FIELD_SOURCE_SCHEMA_NAME AND
 			 FLX.RDB$FIELD_NAME EQ RFR.RDB$FIELD_SOURCE
 		REDUCED TO RFR.RDB$SCHEMA_NAME, RFR.RDB$FIELD_NAME, IDS.RDB$INDEX_NAME, FLX.RDB$NULL_FLAG, RFR.RDB$NULL_FLAG
 		SORTED BY ASCENDING RFR.RDB$SCHEMA_NAME, RFR.RDB$FIELD_NAME
@@ -8459,7 +8459,7 @@ void AlterRelationNode::modifyField(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 				 RFR.RDB$FIELD_NAME = field->fld_name.c_str() AND
 				 REL.RDB$SCHEMA_NAME = RFR.RDB$SCHEMA_NAME AND
 				 REL.RDB$RELATION_NAME = RFR.RDB$RELATION_NAME AND
-				 FLD.RDB$SCHEMA_NAME EQUIV RFR.RDB$FIELD_SOURCE_SCHEMA_NAME AND
+				 FLD.RDB$SCHEMA_NAME = RFR.RDB$FIELD_SOURCE_SCHEMA_NAME AND
 				 FLD.RDB$FIELD_NAME = RFR.RDB$FIELD_SOURCE
 		{
 			found = true;
@@ -8512,7 +8512,9 @@ void AlterRelationNode::modifyField(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 					if (!RFR.RDB$GENERATOR_NAME.NULL)
 					{
 						// msg 275: Identity column @1 of table @2 cannot have default value
-						status_exception::raise(Arg::PrivateDyn(275) << field->fld_name << name.toQuotedString());
+						status_exception::raise(Arg::PrivateDyn(275) <<
+							field->fld_name.toQuotedString() <<
+							name.toQuotedString());
 					}
 
 					if (hasDimensions)
@@ -8557,7 +8559,7 @@ void AlterRelationNode::modifyField(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 							// msg 230: "Local column %s default belongs to domain %s"
 							status_exception::raise(
 								Arg::PrivateDyn(230) <<
-								field->fld_name <<
+								field->fld_name.toQuotedString() <<
 								QualifiedName(FLD.RDB$FIELD_NAME, FLD.RDB$SCHEMA_NAME).toQuotedString());
 						}
 					}
@@ -8759,7 +8761,9 @@ void AlterRelationNode::modifyField(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 						if (!newDom.dyn_dsc.isExact() || newDom.dyn_dsc.dsc_scale != 0)
 						{
 							// Identity column @1 of table @2 must be exact numeric with zero scale.
-							status_exception::raise(Arg::PrivateDyn(273) << field->fld_name << name.toQuotedString());
+							status_exception::raise(Arg::PrivateDyn(273) <<
+								field->fld_name.toQuotedString() <<
+								name.toQuotedString());
 						}
 					}
 				}
@@ -8860,7 +8864,9 @@ void AlterRelationNode::modifyField(thread_db* tdbb, DsqlCompilerScratch* dsqlSc
 		if (!found)
 		{
 			// msg 176: "column %s does not exist in table/view %s"
-			status_exception::raise(Arg::PrivateDyn(176) << field->fld_name << name.toQuotedString());
+			status_exception::raise(Arg::PrivateDyn(176) <<
+				field->fld_name.toQuotedString() <<
+				name.toQuotedString());
 		}
 
 		// Update any indices that exist.
@@ -8895,13 +8901,13 @@ void DropRelationNode::deleteGlobalField(thread_db* tdbb, jrd_tra* transaction,
 			 FLD.RDB$DEFAULT_SOURCE MISSING AND
 			 FLD.RDB$FIELD_NAME STARTING WITH IMPLICIT_DOMAIN_PREFIX AND
 			 (NOT ANY RFR IN RDB$RELATION_FIELDS WITH
-				RFR.RDB$FIELD_SOURCE_SCHEMA_NAME EQUIV FLD.RDB$SCHEMA_NAME AND
+				RFR.RDB$FIELD_SOURCE_SCHEMA_NAME EQ FLD.RDB$SCHEMA_NAME AND
 				RFR.RDB$FIELD_SOURCE EQ FLD.RDB$FIELD_NAME) AND
 			 (NOT ANY PRM IN RDB$PROCEDURE_PARAMETERS WITH
-				PRM.RDB$FIELD_SOURCE_SCHEMA_NAME EQUIV FLD.RDB$SCHEMA_NAME AND
+				PRM.RDB$FIELD_SOURCE_SCHEMA_NAME EQ FLD.RDB$SCHEMA_NAME AND
 				PRM.RDB$FIELD_SOURCE EQ FLD.RDB$FIELD_NAME) AND
 			 (NOT ANY ARG IN RDB$FUNCTION_ARGUMENTS WITH
-				ARG.RDB$FIELD_SOURCE_SCHEMA_NAME EQUIV FLD.RDB$SCHEMA_NAME AND
+				ARG.RDB$FIELD_SOURCE_SCHEMA_NAME EQ FLD.RDB$SCHEMA_NAME AND
 				ARG.RDB$FIELD_SOURCE EQ FLD.RDB$FIELD_NAME)
 	{
 		DropDomainNode::deleteDimensionRecords(tdbb, transaction, globalName);
@@ -10100,7 +10106,7 @@ void CreateIndexNode::store(thread_db* tdbb, jrd_tra* transaction, QualifiedName
 				F IN RDB$RELATION_FIELDS CROSS
 				GF IN RDB$FIELDS
 				WITH F.RDB$FIELD_NAME EQ definition.columns[i].c_str() AND
-					 GF.RDB$SCHEMA_NAME EQUIV F.RDB$FIELD_SOURCE_SCHEMA_NAME AND
+					 GF.RDB$SCHEMA_NAME EQ F.RDB$FIELD_SOURCE_SCHEMA_NAME AND
 					 GF.RDB$FIELD_NAME EQ F.RDB$FIELD_SOURCE AND
 					 IDX.RDB$SCHEMA_NAME EQ F.RDB$SCHEMA_NAME AND
 					 IDX.RDB$RELATION_NAME EQ F.RDB$RELATION_NAME

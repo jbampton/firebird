@@ -3207,7 +3207,6 @@ static void commit_relation_data(BurpGlobals* tdgbl, burp_rel* relation)
 			case isc_sort_mem_err:
 			case isc_no_dup:
 				indexName = QualifiedMetaString::parseSchemaObject((TEXT*) tdgbl->status_vector[3]);
-				indexName.object = (TEXT*) tdgbl->status_vector[3];
 				BURP_print_status(false, &tdgbl->status_vector);
 
 				FOR(REQUEST_HANDLE req_handle)
@@ -8546,6 +8545,10 @@ bool get_schema(BurpGlobals* tdgbl)
 					eat_text(tdgbl);
 					break;
 
+				case att_schema_sql_security:
+					get_boolean(tdgbl);
+					break;
+
 				case att_schema_security_class:
 					eat_text(tdgbl);
 					break;
@@ -10915,8 +10918,7 @@ bool restore(BurpGlobals* tdgbl, Firebird::IProvider* provider, const TEXT* file
 			X IN RDB$FIELDS WITH
 			X.RDB$SYSTEM_FLAG EQ 1
 		{
-			const QualifiedMetaString name(X.RDB$FIELD_NAME, (X.RDB$SCHEMA_NAME.NULL ? "" : X.RDB$SCHEMA_NAME));
-			tdgbl->systemFields.add(name);
+			tdgbl->systemFields.add(QualifiedMetaString(X.RDB$FIELD_NAME, X.RDB$SCHEMA_NAME));
 		}
 		END_FOR
 		ON_ERROR
@@ -11545,10 +11547,7 @@ USHORT get_view_base_relation_count(BurpGlobals* tdgbl,
 		{
 			// Call recursive for VIEWS that are referenced in VIEWS
 			result += get_view_base_relation_count(tdgbl,
-				QualifiedMetaString(
-					V.RDB$RELATION_NAME,
-					(V.RDB$RELATION_SCHEMA_NAME.NULL ? "" : V.RDB$RELATION_SCHEMA_NAME)
-				),
+				QualifiedMetaString(V.RDB$RELATION_NAME, V.RDB$RELATION_SCHEMA_NAME),
 				depth, error);
 
 			if (*error)
@@ -11999,10 +11998,7 @@ void update_view_dbkey_lengths(BurpGlobals* tdgbl)
 	{
 		bool error = false;
 		const USHORT result = get_view_base_relation_count(tdgbl,
-			QualifiedMetaString(
-				R.RDB$RELATION_NAME,
-				(R.RDB$SCHEMA_NAME.NULL ? "" : R.RDB$SCHEMA_NAME)
-			),
+			QualifiedMetaString(R.RDB$RELATION_NAME, R.RDB$SCHEMA_NAME),
 			0, &error);
 
 		fb_utils::exact_name(R.RDB$RELATION_NAME);
@@ -12197,7 +12193,7 @@ void fix_plugins_schemas(BurpGlobals* tdgbl)
 	};
 
 	const PluginMigration pluginsMigration[] = {
-		{"PROFILER", "RDB$PROFILER",
+		{"PROFILER", "PLG$PROFILER",
 			R"""(
 			select exists(
 			           select first 1 1
@@ -12825,7 +12821,7 @@ void fix_plugins_schemas(BurpGlobals* tdgbl)
 			}
 		},
 
-		{"SRP", "RDB$SRP",
+		{"SRP", "PLG$SRP",
 			R"""(
 			select exists(
 			           select first 1 1
@@ -12913,7 +12909,7 @@ void fix_plugins_schemas(BurpGlobals* tdgbl)
 			}
 		},
 
-		{"LEGACY_SEC", "RDB$LEGACY_SEC",
+		{"LEGACY_SEC", "PLG$LEGACY_SEC",
 			R"""(
 			select exists(
 			           select first 1 1
