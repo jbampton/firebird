@@ -8003,11 +8003,13 @@ static void print_message(Firebird::IMessageMetadata* msg, const char* dir)
 			break;
 		}
 
+		const auto schema = msg->getSchema(fbStatus, i);
+
 		isqlGlob.printf("\n");
 		isqlGlob.printf("  :  name: %s  alias: %s\n",
 				msg->getField(fbStatus, i), msg->getAlias(fbStatus, i));
-		isqlGlob.printf("  : table: %s  owner: %s\n",
-				msg->getRelation(fbStatus, i), msg->getOwner(fbStatus, i));
+		isqlGlob.printf("  : table: %s  schema: %s  owner: %s\n",
+				msg->getRelation(fbStatus, i), (schema ? schema : ""), msg->getOwner(fbStatus, i));
 	}
 }
 
