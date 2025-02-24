@@ -6135,7 +6135,7 @@ DmlNode* FieldNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch* cs
 			if ((id = PAR_find_proc_field(procedure, name)) == -1)
 			{
 				PAR_error(csb, Arg::Gds(isc_fldnotdef2) <<
-					Arg::Str(name) << Arg::Str(procedure->getName().toQuotedString()));
+					name.toQuotedString() << procedure->getName().toQuotedString());
 			}
 		}
 		else
@@ -6166,13 +6166,15 @@ DmlNode* FieldNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch* cs
 
  					if (tdbb->getAttachment()->isGbak())
 					{
-						PAR_warning(Arg::Warning(isc_fldnotdef) << Arg::Str(name) <<
-																   relation->rel_name.toQuotedString());
+						PAR_warning(Arg::Warning(isc_fldnotdef) <<
+							name.toQuotedString() <<
+							relation->rel_name.toQuotedString());
 					}
 					else if (!(relation->rel_flags & REL_deleted))
 					{
-						PAR_error(csb, Arg::Gds(isc_fldnotdef) << Arg::Str(name) <<
-																  relation->rel_name.toQuotedString());
+						PAR_error(csb, Arg::Gds(isc_fldnotdef) <<
+							name.toQuotedString() <<
+							relation->rel_name.toQuotedString());
 					}
 					else
 						PAR_error(csb, Arg::Gds(isc_ctxnotdef));
@@ -6943,8 +6945,9 @@ ValueExprNode* FieldNode::pass1(thread_db* tdbb, CompilerScratch* csb)
 		}
 
 		// Msg 364 "cannot access column %s in view %s"
-		ERR_post(Arg::Gds(isc_no_field_access) << Arg::Str(field->fld_name) <<
-												  relation->rel_name.toQuotedString());
+		ERR_post(Arg::Gds(isc_no_field_access) <<
+			field->fld_name.toQuotedString() <<
+			relation->rel_name.toQuotedString());
 	}
 
 	// The previous test below is an apparent temporary fix
@@ -12477,7 +12480,7 @@ DmlNode* SysFuncCallNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScrat
 	if (!node->function)
 	{
 		csb->csb_blr_reader.seekBackward(count);
-		PAR_error(csb, Arg::Gds(isc_funnotdef) << Arg::Str(name));
+		PAR_error(csb, Arg::Gds(isc_funnotdef) << name.toQuotedString());
 	}
 
 	node->args = PAR_args(tdbb, csb);
@@ -13646,12 +13649,13 @@ dsc* UdfCallNode::execute(thread_db* tdbb, Request* request) const
 	{
 		status_exception::raise(
 			Arg::Gds(isc_func_pack_not_implemented) <<
-				Arg::Str(function->getName().object) << function->getName().getSchemaAndPackage().toQuotedString());
+				function->getName().object.toQuotedString() <<
+				function->getName().getSchemaAndPackage().toQuotedString());
 	}
 	else if (!function->isDefined())
 	{
 		status_exception::raise(
-			Arg::Gds(isc_funnotdef) << Arg::Str(function->getName().toQuotedString()) <<
+			Arg::Gds(isc_funnotdef) << function->getName().toQuotedString() <<
 			Arg::Gds(isc_modnotfound));
 	}
 
@@ -13843,7 +13847,7 @@ ValueExprNode* UdfCallNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 	{
 		status_exception::raise(
 			Arg::Gds(isc_private_function) <<
-			function->udf_name.object <<
+			function->udf_name.object.toQuotedString() <<
 			function->udf_name.getSchemaAndPackage().toQuotedString());
 	}
 

@@ -124,8 +124,7 @@ class DropPackageNode : public DdlNode
 public:
 	DropPackageNode(MemoryPool& pool, const QualifiedName& aName)
 		: DdlNode(pool),
-		  name(pool, aName),
-		  silent(false)
+		  name(pool, aName)
 	{
 	}
 
@@ -155,7 +154,7 @@ protected:
 
 public:
 	QualifiedName name;
-	bool silent;
+	bool silent = false;
 	bool recreate = false;
 };
 
@@ -206,8 +205,7 @@ class DropPackageBodyNode : public DdlNode
 public:
 	DropPackageBodyNode(MemoryPool& pool, const QualifiedName& aName)
 		: DdlNode(pool),
-		  name(pool, aName),
-		  silent(false)
+		  name(pool, aName)
 	{
 	}
 
@@ -233,7 +231,7 @@ protected:
 
 public:
 	QualifiedName name;
-	bool silent;	// Unused. Just to please RecreateNode template.
+	bool silent = false;	// Unused. Just to please RecreateNode template.
 	bool recreate = false;
 };
 

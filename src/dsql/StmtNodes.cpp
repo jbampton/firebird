@@ -2868,11 +2868,11 @@ DmlNode* ErrorHandlerNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScra
 				break;
 			}
 
-			case blr_exception:
 			case blr_exception2:
-				if (codeType == blr_exception2)
-					csb->csb_blr_reader.getMetaName(item.name.schema);
+				csb->csb_blr_reader.getMetaName(item.name.schema);
+				[[fallthrough]];
 
+			case blr_exception:
 				csb->csb_blr_reader.getMetaName(item.name.object);
 				csb->qualifyExistingName(tdbb, item.name, obj_exception);
 
@@ -2939,11 +2939,13 @@ void ErrorHandlerNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 
 			case ExceptionItem::SQL_STATE:
 				dsqlScratch->appendUChar(blr_sql_state);
+				fb_assert(i->name.schema.isEmpty());
 				dsqlScratch->appendNullString(i->name.object.c_str());
 				break;
 
 			case ExceptionItem::GDS_CODE:
 				dsqlScratch->appendUChar(blr_gds_code);
+				fb_assert(i->name.schema.isEmpty());
 				dsqlScratch->appendNullString(i->name.object.c_str());
 				break;
 
@@ -3454,7 +3456,7 @@ ExecProcedureNode* ExecProcedureNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 	{
 		status_exception::raise(
 			Arg::Gds(isc_private_procedure) <<
-			procedure->prc_name.object <<
+			procedure->prc_name.object.toQuotedString() <<
 			procedure->prc_name.getSchemaAndPackage().toQuotedString());
 	}
 
@@ -3674,7 +3676,7 @@ ExecProcedureNode* ExecProcedureNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 			const USHORT outCount = outputTargets ? outputTargets->items.getCount() : 0;
 
 			if (outCount != procedure->prc_out_count)
-				ERRD_post(Arg::Gds(isc_prc_out_param_mismatch) << Arg::Str(dsqlName.toQuotedString()));
+				ERRD_post(Arg::Gds(isc_prc_out_param_mismatch) << dsqlName.toQuotedString());
 		}
 
 		node->outputTargets = dsqlPassArray(dsqlScratch, outputTargets);
@@ -3932,12 +3934,12 @@ void ExecProcedureNode::executeProcedure(thread_db* tdbb, Request* request) cons
 	{
 		status_exception::raise(
 			Arg::Gds(isc_proc_pack_not_implemented) <<
-				Arg::Str(procedure->getName().object) << Arg::Str(procedure->getName().package));
+				procedure->getName().object.toQuotedString() << procedure->getName().package.toQuotedString());
 	}
 	else if (!procedure->isDefined())
 	{
 		status_exception::raise(
-			Arg::Gds(isc_prcnotdef) << Arg::Str(procedure->getName().toQuotedString()) <<
+			Arg::Gds(isc_prcnotdef) << procedure->getName().toQuotedString() <<
 			Arg::Gds(isc_modnotfound));
 	}
 
@@ -5255,18 +5257,18 @@ DmlNode* ExceptionNode::parse(thread_db* tdbb, MemoryPool& pool, CompilerScratch
 			str.lower();
 			item->name.object = str;
 			if (!(item->code = PAR_symbol_to_gdscode(str)))
-				PAR_error(csb, Arg::Gds(isc_codnotdef) << item->name.object);
+				PAR_error(csb, Arg::Gds(isc_codnotdef) << item->name.object.toQuotedString());
 			break;
 		}
 
-		case blr_exception:
 		case blr_exception2:
 		case blr_exception3:
+			csb->csb_blr_reader.getMetaName(item->name.schema);
+			[[fallthrough]];
+
+		case blr_exception:
 		case blr_exception_msg:
 		case blr_exception_params:
-			if (codeType == blr_exception2 || codeType == blr_exception3)
-				csb->csb_blr_reader.getMetaName(item->name.schema);
-
 			csb->csb_blr_reader.getMetaName(item->name.object);
 			csb->qualifyExistingName(tdbb, item->name, obj_exception);
 
@@ -5397,7 +5399,7 @@ void ExceptionNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 				dsqlScratch->appendUChar(blr_exception_params);
 			else if (messageExpr)
 				dsqlScratch->appendUChar(blr_exception_msg);
-			else	// Otherwise go usual way, i.e. generate blr_exception or blr_exception2.
+			else
 				dsqlScratch->appendUChar(blr_exception);
 
 			dsqlScratch->appendNullString(exception->name.object.c_str());
@@ -6194,7 +6196,7 @@ void LocalDeclarationsNode::checkUniqueFieldsNames(const LocalDeclarationsNode* 
 					{
 						ERRD_post(
 							Arg::Gds(isc_sqlerr) << Arg::Num(-637) <<
-							Arg::Gds(isc_dsql_duplicate_spec) << parameter->name);
+							Arg::Gds(isc_dsql_duplicate_spec) << parameter->name.toQuotedString());
 					}
 				}
 			}
@@ -6223,7 +6225,7 @@ void LocalDeclarationsNode::checkUniqueFieldsNames(const LocalDeclarationsNode* 
 			{
 				ERRD_post(
 					Arg::Gds(isc_sqlerr) << Arg::Num(-637) <<
-					Arg::Gds(isc_dsql_duplicate_spec) << Arg::Str(name));
+					Arg::Gds(isc_dsql_duplicate_spec) << toQuotedString(string(name)));
 			}
 		}
 	}
@@ -6261,7 +6263,7 @@ void LocalDeclarationsNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 					if (field->fld_name == rest_field->fld_name)
 					{
 						ERRD_post(Arg::Gds(isc_sqlerr) << Arg::Num(-637) <<
-								  Arg::Gds(isc_dsql_duplicate_spec) << Arg::Str(field->fld_name));
+								  Arg::Gds(isc_dsql_duplicate_spec) << field->fld_name.toQuotedString());
 					}
 				}
 			}
@@ -9882,13 +9884,11 @@ void SetTransactionNode::genTableLock(DsqlCompilerScratch* dsqlScratch,
 	const USHORT lockMode = (tblLock.lockMode & LOCK_MODE_WRITE) ?
 		isc_tpb_lock_write : isc_tpb_lock_read;
 
-	for (ObjectsArray<QualifiedName>::iterator i = tblLock.tables->begin();
-		 i != tblLock.tables->end();
-		 ++i)
+	for (const auto& tableName : *tblLock.tables)
 	{
 		dsqlScratch->appendUChar(lockMode);
 		// FIXME: schema
-		dsqlScratch->appendNullString(i->object.c_str());	// stuff table name
+		dsqlScratch->appendNullString(tableName.object.c_str());	// stuff table name
 		dsqlScratch->appendUChar(lockLevel);
 	}
 }
@@ -10225,9 +10225,7 @@ StmtNode* UpdateOrInsertNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 	node->returning = returning;
 
 	const auto& relationName = relation->dsqlName;
-
 	auto baseName = relationName;
-
 	bool needSavePoint;
 
 	// Build the INSERT node.
@@ -10556,7 +10554,7 @@ void UserSavepointNode::execute(thread_db* tdbb, DsqlRequest* request, jrd_tra**
 	}
 
 	if (!savepoint && command != CMD_SET)
-		ERR_post(Arg::Gds(isc_invalid_savepoint) << Arg::Str(name));
+		ERR_post(Arg::Gds(isc_invalid_savepoint) << name.toQuotedString());
 
 	fb_assert(!savepoint || !previous || previous->getNext() == savepoint);
 
@@ -10636,7 +10634,7 @@ static void dsqlExplodeFields(dsql_rel* relation, Array<NestConst<T> >& fields, 
 			continue;
 
 		FieldNode* fieldNode = FB_NEW_POOL(pool) FieldNode(pool);
-		fieldNode->dsqlName = field->fld_name.c_str();
+		fieldNode->dsqlName = field->fld_name;
 		fields.add(fieldNode);
 	}
 }
@@ -10963,7 +10961,7 @@ static dsql_ctx* dsqlPassCursorContext(DsqlCompilerScratch* dsqlScratch, const M
 	{
 		// cursor with DISTINCT is not updatable
 		ERRD_post(Arg::Gds(isc_sqlerr) << Arg::Num(-510) <<
-				  Arg::Gds(isc_dsql_cursor_update_err) << cursor);
+				  Arg::Gds(isc_dsql_cursor_update_err) << cursor.toQuotedString());
 	}
 
 	NestConst<RecSourceListNode> temp = nodeRse->dsqlStreams;
@@ -10983,7 +10981,9 @@ static dsql_ctx* dsqlPassCursorContext(DsqlCompilerScratch* dsqlScratch, const M
 				{
 					ERRD_post(Arg::Gds(isc_sqlerr) << Arg::Num(-504) <<
 							  Arg::Gds(isc_dsql_cursor_err) <<
-							  Arg::Gds(isc_dsql_cursor_rel_ambiguous) << relName.toQuotedString() << cursor);
+							  Arg::Gds(isc_dsql_cursor_rel_ambiguous) <<
+							  	relName.toQuotedString() <<
+								cursor.toQuotedString());
 				}
 				else
 					context = candidate;
@@ -10994,7 +10994,7 @@ static dsql_ctx* dsqlPassCursorContext(DsqlCompilerScratch* dsqlScratch, const M
 		{
 			// cursor with aggregation is not updatable
 			ERRD_post(Arg::Gds(isc_sqlerr) << Arg::Num(-510) <<
-					  Arg::Gds(isc_dsql_cursor_update_err) << cursor);
+					  Arg::Gds(isc_dsql_cursor_update_err) << cursor.toQuotedString());
 		}
 		// note that UnionSourceNode and joins will cause the error below,
 		// as well as derived tables. Some cases deserve fixing in the future
@@ -11004,7 +11004,7 @@ static dsql_ctx* dsqlPassCursorContext(DsqlCompilerScratch* dsqlScratch, const M
 	{
 		ERRD_post(Arg::Gds(isc_sqlerr) << Arg::Num(-504) <<
 				  Arg::Gds(isc_dsql_cursor_err) <<
-				  Arg::Gds(isc_dsql_cursor_rel_not_found) << relName.toQuotedString() << cursor);
+				  Arg::Gds(isc_dsql_cursor_rel_not_found) << relName.toQuotedString() << cursor.toQuotedString());
 	}
 
 	return context;
@@ -11028,7 +11028,7 @@ static RseNode* dsqlPassCursorReference(DsqlCompilerScratch* dsqlScratch, const 
 		// cursor is not found
 		ERRD_post(Arg::Gds(isc_sqlerr) << Arg::Num(-504) <<
 				  Arg::Gds(isc_dsql_cursor_err) <<
-				  Arg::Gds(isc_dsql_cursor_not_found) << cursor);
+				  Arg::Gds(isc_dsql_cursor_not_found) << cursor.toQuotedString());
 	}
 
 	auto parent = *symbol;
@@ -11042,7 +11042,7 @@ static RseNode* dsqlPassCursorReference(DsqlCompilerScratch* dsqlScratch, const 
 	{
 		// cursor is not updatable
 		ERRD_post(Arg::Gds(isc_sqlerr) << Arg::Num(-510) <<
-				  Arg::Gds(isc_dsql_cursor_update_err) << cursor);
+				  Arg::Gds(isc_dsql_cursor_update_err) << cursor.toQuotedString());
 	}
 
 	const auto statement = static_cast<DsqlDmlStatement*>(dsqlScratch->getDsqlStatement());
@@ -11967,9 +11967,14 @@ static void validateExpressions(thread_db* tdbb, const Array<ValidateInfo>& vali
 					(field = (*vector)[fieldNode->fieldId]))
 				{
 					if (relation->rel_name.object.hasData())
-						name.printf("%s.\"%s\"", relation->rel_name.toQuotedString().c_str(), field->fld_name.c_str());
+					{
+						name.printf(
+							"%s.%s",
+							relation->rel_name.toQuotedString().c_str(),
+							field->fld_name.toQuotedString().c_str());
+					}
 					else
-						name.printf("\"%s\"", field->fld_name.c_str());
+						name = field->fld_name.toQuotedString();
 				}
 			}
 

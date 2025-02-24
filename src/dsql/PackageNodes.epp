@@ -254,7 +254,7 @@ DdlNode* CreateAlterPackageNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 					status_exception::raise(
 						Arg::Gds(isc_no_meta_update) <<
 						Arg::Gds(isc_dyn_duplicate_package_item) <<
-							Arg::Str("FUNCTION") << fun->name.object);
+							Arg::Str("FUNCTION") << fun->name.object.toQuotedString());
 				}
 
 				functionNames.add(fun->name.object);
@@ -275,7 +275,7 @@ DdlNode* CreateAlterPackageNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 					status_exception::raise(
 						Arg::Gds(isc_no_meta_update) <<
 						Arg::Gds(isc_dyn_duplicate_package_item) <<
-							Arg::Str("PROCEDURE") << proc->name.object);
+							Arg::Str("PROCEDURE") << proc->name.object.toQuotedString());
 				}
 
 				procedureNames.add(proc->name.object);
@@ -714,7 +714,7 @@ DdlNode* CreatePackageBodyNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 						status_exception::raise(
 							Arg::Gds(isc_no_meta_update) <<
 							Arg::Gds(isc_dyn_duplicate_package_item) <<
-								Arg::Str("FUNCTION") << fun->name.object);
+								Arg::Str("FUNCTION") << fun->name.object.toQuotedString());
 					}
 
 					functionNames[i].add(fun->name.object);
@@ -739,7 +739,7 @@ DdlNode* CreatePackageBodyNode::dsqlPass(DsqlCompilerScratch* dsqlScratch)
 						status_exception::raise(
 							Arg::Gds(isc_no_meta_update) <<
 							Arg::Gds(isc_dyn_duplicate_package_item) <<
-								Arg::Str("PROCEDURE") << proc->name.object);
+								Arg::Str("PROCEDURE") << proc->name.object.toQuotedString());
 					}
 
 					procedureNames[i].add(proc->name.object);

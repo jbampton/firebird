@@ -279,7 +279,10 @@ static void checkSpTrigDependency(thread_db* tdbb, jrd_tra* transaction,
 
 		// msg 206: Column %s from table %s is referenced in %s.
 		status_exception::raise(
-			Arg::PrivateDyn(206) << fieldName << relationName.toQuotedString() << depName.toQuotedString());
+			Arg::PrivateDyn(206) <<
+			fieldName.toQuotedString() <<
+			relationName.toQuotedString() <<
+			depName.toQuotedString());
 	}
 	END_FOR
 }
@@ -311,7 +314,10 @@ static void checkViewDependency(thread_db* tdbb, jrd_tra* transaction,
 
 		// msg 206: Column %s from table %s is referenced in  %s.
 		status_exception::raise(
-			Arg::PrivateDyn(206) << fieldName << relationName.toQuotedString() << viewName.toQuotedString());
+			Arg::PrivateDyn(206) <<
+			fieldName.toQuotedString() <<
+			relationName.toQuotedString() <<
+			viewName.toQuotedString());
 	}
 	END_FOR
 }
@@ -695,7 +701,10 @@ static void modifyLocalFieldPosition(thread_db* tdbb, jrd_tra* transaction,
 	if (!found)
 	{
 		// msg 176: "column %s does not exist in table/view %s"
-		status_exception::raise(Arg::PrivateDyn(176) << fieldName << relationName.toQuotedString());
+		status_exception::raise(
+			Arg::PrivateDyn(176) <<
+			fieldName.toQuotedString() <<
+			relationName.toQuotedString());
 	}
 
 	// Find the position of the last field in the relation.
@@ -2318,7 +2327,7 @@ void CreateAlterFunctionNode::storeArgument(thread_db* tdbb, DsqlCompilerScratch
 				status_exception::raise(
 					Arg::Gds(isc_dyn_defvaldecl_package_func) <<
 					name.getSchemaAndPackage().toQuotedString() <<
-					name.object);
+					name.object.toQuotedString());
 			}
 
 			ARG.RDB$DEFAULT_VALUE.NULL = FALSE;
@@ -3254,7 +3263,7 @@ void CreateAlterProcedureNode::storeParameter(thread_db* tdbb, DsqlCompilerScrat
 				status_exception::raise(
 					Arg::Gds(isc_dyn_defvaldecl_package_proc) <<
 					name.getSchemaAndPackage().toQuotedString() <<
-					name.object);
+					name.object.toQuotedString());
 			}
 
 			attachment->storeMetaDataBlob(tdbb, transaction, &PRM.RDB$DEFAULT_SOURCE,
@@ -6508,7 +6517,7 @@ bool RelationNode::deleteLocalField(thread_db* tdbb, jrd_tra* transaction,
 		// msg 52: "field %s from relation %s is referenced in view %s"
 		status_exception::raise(
 			Arg::PrivateDyn(52) <<
-			fieldName <<
+			fieldName.toQuotedString() <<
 			relationName.toQuotedString() <<
 			QualifiedName(Y.RDB$RELATION_NAME, Y.RDB$SCHEMA_NAME).toQuotedString());
 	}
@@ -6544,7 +6553,10 @@ bool RelationNode::deleteLocalField(thread_db* tdbb, jrd_tra* transaction,
 		{
 			// msg 187: "field %s from relation %s is referenced in index %s"
 			status_exception::raise(
-				Arg::PrivateDyn(187) << fieldName << relationName.toQuotedString() << IDX.RDB$INDEX_NAME);
+				Arg::PrivateDyn(187) <<
+				fieldName.toQuotedString() <<
+				relationName.toQuotedString() <<
+				MetaName(IDX.RDB$INDEX_NAME).toQuotedString());
 		}
 	}
 	END_FOR
@@ -6575,8 +6587,9 @@ bool RelationNode::deleteLocalField(thread_db* tdbb, jrd_tra* transaction,
 		// msg 187: "field %s from relation %s is referenced in index %s"
 		status_exception::raise(
 			Arg::PrivateDyn(187) <<
-				fieldName << relationName.toQuotedString() <<
-				fb_utils::exact_name_limit(IDX.RDB$INDEX_NAME, sizeof(IDX.RDB$INDEX_NAME)));
+				fieldName.toQuotedString() <<
+				relationName.toQuotedString() <<
+				MetaName(IDX.RDB$INDEX_NAME).toQuotedString());
 	}
 	END_FOR
 
@@ -6633,7 +6646,10 @@ bool RelationNode::deleteLocalField(thread_db* tdbb, jrd_tra* transaction,
 	if (!found && !silent)
 	{
 		// msg 176: "column %s does not exist in table/view %s"
-		status_exception::raise(Arg::PrivateDyn(176) << fieldName << relationName.toQuotedString());
+		status_exception::raise(
+			Arg::PrivateDyn(176) <<
+			fieldName.toQuotedString() <<
+			relationName.toQuotedString());
 	}
 
 	return found;
@@ -12481,12 +12497,12 @@ void GrantRevokeNode::grantRevoke(thread_db* tdbb, jrd_tra* transaction, const G
 		if (isGrant)
 		{
 			// msg 195: keyword NONE could not be used as SQL role name.
-			status_exception::raise(Arg::PrivateDyn(195) << objName.object.c_str());
+			status_exception::raise(Arg::PrivateDyn(195) << objName.object.toQuotedString());
 		}
 		else
 		{
 			///CVC: Make this a warning in the future.
-			///DYN_error_punt(false, 195, objName.c_str());
+			///DYN_error_punt(false, 195, objName.toQuotedString());
 		}
 	}
 
@@ -12787,7 +12803,7 @@ void GrantRevokeNode::checkGrantorCanGrantRelation(thread_db* tdbb, jrd_tra* tra
 		{
 			// column .. does not exist in table/view ..
 			status_exception::raise(Arg::PrivateDyn(176) <<
-				fieldName <<
+				fieldName.toQuotedString() <<
 				relationName.toQuotedString());
 		}
 	}
@@ -12871,7 +12887,7 @@ void GrantRevokeNode::checkGrantorCanGrantRelation(thread_db* tdbb, jrd_tra* tra
 		{
 			// no grant option for privilege .. on column .. of [base] table/view ..
 			status_exception::raise(Arg::PrivateDyn(topLevel ? 167 : 168) <<
-				privilegeName(*privilege) << fieldName.c_str() << relationName.toQuotedString());
+				privilegeName(*privilege) << fieldName.toQuotedString() << relationName.toQuotedString());
 		}
 
 		if (goFld == -1)
@@ -12880,14 +12896,14 @@ void GrantRevokeNode::checkGrantorCanGrantRelation(thread_db* tdbb, jrd_tra* tra
 			{
 				// no grant option for privilege .. on [base] table/view .. (for column ..)
 				status_exception::raise(Arg::PrivateDyn(topLevel ? 169 : 170) <<
-					privilegeName(*privilege) << relationName.toQuotedString() << fieldName.c_str());
+					privilegeName(*privilege) << relationName.toQuotedString() << fieldName.toQuotedString());
 			}
 
 			if (goRel == -1)
 			{
 				// no .. privilege with grant option on [base] table/view .. (for column ..)
 				status_exception::raise(Arg::PrivateDyn(topLevel ? 171 : 172) <<
-					privilegeName(*privilege) << relationName.toQuotedString() << fieldName.c_str());
+					privilegeName(*privilege) << relationName.toQuotedString() << fieldName.toQuotedString());
 			}
 		}
 	}
@@ -13189,8 +13205,7 @@ void GrantRevokeNode::setFieldClassName(thread_db* tdbb, jrd_tra* transaction,
 				AutoCacheRequest request2(tdbb, drq_s_u_class, DYN_REQUESTS);
 				FOR (REQUEST_HANDLE request2 TRANSACTION_HANDLE transaction)
 					RFR1 IN RDB$RELATION_FIELDS
-					WITH RFR1.RDB$SCHEMA_NAME = RFR.RDB$SCHEMA_NAME AND
-						 RFR1.RDB$SECURITY_CLASS = RFR.RDB$SECURITY_CLASS
+					WITH RFR1.RDB$SECURITY_CLASS = RFR.RDB$SECURITY_CLASS
 				{
 					unique = false;
 				}

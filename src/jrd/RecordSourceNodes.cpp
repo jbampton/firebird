@@ -615,7 +615,7 @@ RelationSourceNode* RelationSourceNode::parse(thread_db* tdbb, CompilerScratch* 
 
 		case blr_relation3:
 			csb->csb_blr_reader.getMetaName(name.schema);
-			// fall through
+			[[fallthrough]];
 
 		case blr_relation:
 		case blr_relation2:

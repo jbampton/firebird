@@ -88,13 +88,10 @@ void DsqlCompilerScratch::qualifyExistingName(QualifiedName& name, std::initiali
 		{
 			cachedDdlSchemaSearchPath = FB_NEW_POOL(getPool()) ObjectsArray<MetaString>(getPool(), {ddlSchema});
 
-			for (const auto& searchSchema : *attachment->att_schema_search_path)
+			if (const auto& searchPath = *attachment->att_schema_search_path;
+				std::find(searchPath.begin(), searchPath.end(), SYSTEM_SCHEMA) != searchPath.end())
 			{
-				if (searchSchema == SYSTEM_SCHEMA)
-				{
-					cachedDdlSchemaSearchPath->push(searchSchema);
-					break;
-				}
+				cachedDdlSchemaSearchPath->push(SYSTEM_SCHEMA);
 			}
 		}
 
@@ -795,7 +792,7 @@ void DsqlCompilerScratch::addCTEs(WithClause* withClause)
 
 			// Add CTE name into CTE aliases stack. It allows later to search for
 			// aliases of given CTE.
-			addCTEAlias((*cte)->alias.c_str());
+			addCTEAlias((*cte)->alias);
 		}
 		else
 			ctes.add(*cte);

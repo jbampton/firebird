@@ -61,7 +61,8 @@ void ProcedureScan::internalOpen(thread_db* tdbb) const
 	{
 		status_exception::raise(
 			Arg::Gds(isc_proc_pack_not_implemented) <<
-				m_procedure->getName().object << m_procedure->getName().getSchemaAndPackage().toQuotedString());
+				m_procedure->getName().object.toQuotedString() <<
+				m_procedure->getName().getSchemaAndPackage().toQuotedString());
 	}
 	else if (!m_procedure->isDefined())
 	{

@@ -2739,11 +2739,11 @@ private:
 
 public:
 	MetaName name;
+	std::optional<QualifiedName> setDefaultCharSet;	// use empty QualifiedName with DROP DEFAULT CHARACTER SET
+	std::optional<SqlSecurity> setDefaultSqlSecurity;
 	bool create = true;
 	bool alter = false;
 	bool createIfNotExistsOnly = false;
-	std::optional<QualifiedName> setDefaultCharSet;	// use empty QualifiedName with DROP DEFAULT CHARACTER SET
-	std::optional<SqlSecurity> setDefaultSqlSecurity;
 };
 
 

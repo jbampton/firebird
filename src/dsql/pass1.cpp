@@ -406,7 +406,7 @@ dsql_ctx* PASS1_make_context(DsqlCompilerScratch* dsqlScratch, RecordSourceNode*
 			{
 				status_exception::raise(
 					Arg::Gds(isc_private_procedure) <<
-					name.object <<
+					name.object.toQuotedString() <<
 					name.getSchemaAndPackage().toQuotedString());
 			}
 
