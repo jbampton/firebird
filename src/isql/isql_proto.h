@@ -52,7 +52,7 @@ enum class Get
 	COLLATE_ONLY,
 	BOTH
 };
-void	ISQL_get_character_sets(
+bool	ISQL_get_character_sets(
 	SSHORT char_set_id, SSHORT collation,
 	SSHORT default_char_set_id, Get what,
 	bool not_null, Firebird::string& text);

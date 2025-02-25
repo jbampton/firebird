@@ -474,11 +474,11 @@ int EXTRACT_list_table(const QualifiedMetaString& relation_name,
 				if (!FLD.RDB$CHARACTER_SET_ID.NULL)
 					char_set_id = FLD.RDB$CHARACTER_SET_ID;
 
-				ISQL_get_character_sets(char_set_id, collation, getDefaultCharSetForSchemaFunc(relation_name.schema),
-					Get::CHARSET_ONLY, false, char_sets);
-
-				if (char_sets.hasData())
+				if (ISQL_get_character_sets(char_set_id, collation,
+						getDefaultCharSetForSchemaFunc(relation_name.schema), Get::CHARSET_ONLY, false, char_sets))
+				{
 					isqlGlob.prints(char_sets.c_str());
+				}
 
 				// CVC: Someone deleted the code that checks intchar when handling collations
 				// several lines below, so it didn't have any effect. Commented it.
@@ -501,10 +501,8 @@ int EXTRACT_list_table(const QualifiedMetaString& relation_name,
 			{
 				string collate_name;
 
-				ISQL_get_character_sets(char_set_id, collation, getDefaultCharSetForSchemaFunc(relation_name.schema),
-					Get::COLLATE_ONLY, false, collate_name);
-
-				if (collate_name.hasData())
+				if (ISQL_get_character_sets(char_set_id, collation,
+						getDefaultCharSetForSchemaFunc(relation_name.schema), Get::COLLATE_ONLY, false, collate_name))
 				{
 					isqlGlob.printf("(CAST(NULL AS VARCHAR(1)%s)", char_sets.c_str());
 					isqlGlob.printf("%s)", collate_name.c_str());
@@ -598,11 +596,11 @@ int EXTRACT_list_table(const QualifiedMetaString& relation_name,
 
 		if (!RFR.RDB$COLLATION_ID.NULL)
 		{
-			ISQL_get_character_sets(char_set_id, collation, getDefaultCharSetForSchemaFunc(relation_name.schema),
-				Get::COLLATE_ONLY, false, char_sets);
-
-			if (char_sets.hasData())
+			if (ISQL_get_character_sets(char_set_id, collation,
+					getDefaultCharSetForSchemaFunc(relation_name.schema), Get::COLLATE_ONLY, false, char_sets))
+			{
 				isqlGlob.prints(char_sets.c_str());
+			}
 		}
 	}
 	END_FOR
@@ -803,12 +801,12 @@ static void get_procedure_args(const QualifiedMetaString& proc_name,
 				if ((FLD.RDB$FIELD_TYPE == blr_text || FLD.RDB$FIELD_TYPE == blr_varying) &&
 					!prm_collation_id_null)
 				{
-					ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, prm_collation_id,
-						getDefaultCharSetForSchemaFunc(proc_name.schema),
-						Get::COLLATE_ONLY, !prm_null_flag_null && prm_null_flag, char_sets);
-
-					if (char_sets.hasData())
+					if (ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, prm_collation_id,
+							getDefaultCharSetForSchemaFunc(proc_name.schema),
+							Get::COLLATE_ONLY, !prm_null_flag_null && prm_null_flag, char_sets))
+					{
 						isqlGlob.prints(char_sets.c_str());
+					}
 				}
 				else if (!prm_null_flag_null && prm_null_flag)
 					isqlGlob.printf(" NOT NULL");
@@ -859,12 +857,12 @@ static void get_procedure_args(const QualifiedMetaString& proc_name,
 					if (FLD.RDB$CHARACTER_SET_ID.NULL)
 						FLD.RDB$CHARACTER_SET_ID = 0;
 
-					ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, collation,
-						getDefaultCharSetForSchemaFunc(proc_name.schema),
-						Get::BOTH, !prm_null_flag_null && prm_null_flag, char_sets);
-
-					if (char_sets.hasData())
+					if (ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, collation,
+							getDefaultCharSetForSchemaFunc(proc_name.schema),
+							Get::BOTH, !prm_null_flag_null && prm_null_flag, char_sets))
+					{
 						isqlGlob.prints(char_sets.c_str());
+					}
 				}
 				else if (!prm_null_flag_null && prm_null_flag)
 					isqlGlob.printf(" NOT NULL");
@@ -999,12 +997,12 @@ static void get_function_args_ods12(const QualifiedMetaString& func_name, USHORT
 				if ((FLD.RDB$FIELD_TYPE == blr_text || FLD.RDB$FIELD_TYPE == blr_varying) &&
 					!prm_collation_id_null)
 				{
-					ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, prm_collation_id,
-						getDefaultCharSetForSchemaFunc(func_name.schema),
-						Get::COLLATE_ONLY, !prm_null_flag_null && prm_null_flag, char_sets);
-
-					if (char_sets.hasData())
+					if (ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, prm_collation_id,
+							getDefaultCharSetForSchemaFunc(func_name.schema),
+							Get::COLLATE_ONLY, !prm_null_flag_null && prm_null_flag, char_sets))
+					{
 						isqlGlob.prints(char_sets.c_str());
+					}
 				}
 				else if (!prm_null_flag_null && prm_null_flag)
 					isqlGlob.printf(" NOT NULL");
@@ -1055,12 +1053,12 @@ static void get_function_args_ods12(const QualifiedMetaString& func_name, USHORT
 					if (FLD.RDB$CHARACTER_SET_ID.NULL)
 						FLD.RDB$CHARACTER_SET_ID = 0;
 
-					ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, collation,
-						getDefaultCharSetForSchemaFunc(func_name.schema), Get::BOTH,
-						!prm_null_flag_null && prm_null_flag, char_sets);
-
-					if (char_sets.hasData())
+					if (ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, collation,
+							getDefaultCharSetForSchemaFunc(func_name.schema), Get::BOTH,
+							!prm_null_flag_null && prm_null_flag, char_sets))
+					{
 						isqlGlob.prints(char_sets.c_str());
+					}
 				}
 				else if (!prm_null_flag_null && prm_null_flag)
 					isqlGlob.printf(" NOT NULL");
@@ -2185,12 +2183,11 @@ static void list_domain_table(const QualifiedMetaString& table_name,
 			!(((FLD.RDB$FIELD_TYPE == blr_text) || (FLD.RDB$FIELD_TYPE == blr_varying)) &&
 			  FLD.RDB$FIELD_SUB_TYPE != fb_text_subtype_text))
 		{
-			ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, FLD.RDB$COLLATION_ID,
-				getDefaultCharSetForSchemaFunc(name.schema),
-				Get::CHARSET_ONLY, false, char_sets);
-
-			if (char_sets.hasData())
+			if (ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, FLD.RDB$COLLATION_ID,
+					getDefaultCharSetForSchemaFunc(name.schema), Get::CHARSET_ONLY, false, char_sets))
+			{
 				isqlGlob.prints(char_sets.c_str());
+			}
 		}
 
 		if (!FLD.RDB$DEFAULT_SOURCE.NULL)
@@ -2215,12 +2212,11 @@ static void list_domain_table(const QualifiedMetaString& table_name,
 
 		if (!FLD.RDB$COLLATION_ID.NULL)
 		{
-			ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, FLD.RDB$COLLATION_ID,
-				getDefaultCharSetForSchemaFunc(name.schema),
-				Get::COLLATE_ONLY, false, char_sets);
-
-			if (char_sets.hasData())
+			if (ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, FLD.RDB$COLLATION_ID,
+					getDefaultCharSetForSchemaFunc(name.schema), Get::COLLATE_ONLY, false, char_sets))
+			{
 				isqlGlob.prints(char_sets.c_str());
+			}
 		}
 
 		isqlGlob.printf("%s%s", isqlGlob.global_Term, NEWLINE);
@@ -2304,12 +2300,12 @@ static void list_domains(GetDefaultCharSetForSchemaFunc getDefaultCharSetForSche
 			!(((FLD.RDB$FIELD_TYPE == blr_text) || (FLD.RDB$FIELD_TYPE == blr_varying)) &&
 			  FLD.RDB$FIELD_SUB_TYPE != fb_text_subtype_text))
 		{
-			ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, FLD.RDB$COLLATION_ID,
-				getDefaultCharSetForSchemaFunc(name.schema),
-				Get::CHARSET_ONLY, false, char_sets);
-
-			if (char_sets.hasData())
+			if (ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, FLD.RDB$COLLATION_ID,
+					getDefaultCharSetForSchemaFunc(name.schema),
+					Get::CHARSET_ONLY, false, char_sets))
+			{
 				isqlGlob.prints(char_sets.c_str());
+			}
 		}
 
 		if (!FLD.RDB$DEFAULT_SOURCE.NULL)
@@ -2330,12 +2326,11 @@ static void list_domains(GetDefaultCharSetForSchemaFunc getDefaultCharSetForSche
 
 		if (!FLD.RDB$COLLATION_ID.NULL)
 		{
-			ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, FLD.RDB$COLLATION_ID,
-				getDefaultCharSetForSchemaFunc(name.schema),
-				Get::COLLATE_ONLY, false, char_sets);
-
-			if (char_sets.hasData())
+			if (ISQL_get_character_sets(FLD.RDB$CHARACTER_SET_ID, FLD.RDB$COLLATION_ID,
+					getDefaultCharSetForSchemaFunc(name.schema), Get::COLLATE_ONLY, false, char_sets))
+			{
 				isqlGlob.prints(char_sets.c_str());
+			}
 		}
 
 		isqlGlob.printf("%s%s", isqlGlob.global_Term, NEWLINE);
@@ -2453,12 +2448,12 @@ static void listRelationComputed(LegacyTables flag, GetDefaultCharSetForSchemaFu
 				{
 					collation = RFR.RDB$COLLATION_ID;
 					char_set_id = FLD.RDB$CHARACTER_SET_ID;
-					ISQL_get_character_sets(char_set_id, collation,
-						getDefaultCharSetForSchemaFunc(relationName.schema),
-						Get::COLLATE_ONLY, false, char_sets);
 
-					if (char_sets.hasData())
+					if (ISQL_get_character_sets(char_set_id, collation,
+							getDefaultCharSetForSchemaFunc(relationName.schema), Get::COLLATE_ONLY, false, char_sets))
+					{
 						isqlGlob.prints(char_sets.c_str());
+					}
 				}
 			}
 			else
@@ -2515,16 +2510,18 @@ static void listRelationComputed(LegacyTables flag, GetDefaultCharSetForSchemaFu
 
 					if (!FLD.RDB$CHARACTER_SET_ID.NULL)
 						char_set_id = FLD.RDB$CHARACTER_SET_ID;
+
 					if (char_set_id != getDefaultCharSetForSchemaFunc(relationName.schema))
 					{
 						// Currently ALTER TABLE syntax doesn't allow collation here.
-						ISQL_get_character_sets(char_set_id, collation,
-							getDefaultCharSetForSchemaFunc(relationName.schema),
-							Get::CHARSET_ONLY, false, char_sets);
+						if (ISQL_get_character_sets(char_set_id, collation,
+								getDefaultCharSetForSchemaFunc(relationName.schema),
+								Get::CHARSET_ONLY, false, char_sets))
+						{
+							isqlGlob.prints(char_sets.c_str());
+						}
 					}
 
-					if (char_sets.hasData())
-						isqlGlob.prints(char_sets.c_str());
 					// CVC: Someone deleted the code that checks intchar when handling collations
 					// several lines below, so it didn't have any effect. Commented it.
 					//if (!char_set_id)
@@ -2770,7 +2767,7 @@ static void list_functions_legacy()
 		bool firstarg = true;
 
 		FOR FNA IN RDB$FUNCTION_ARGUMENTS
-			WITH FNA.RDB$SCHEMA_NAME EQUIV FUN.RDB$SCHEMA_NAME AND
+			WITH FNA.RDB$SCHEMA_NAME EQUIV NULLIF(FUN.RDB$SCHEMA_NAME, '') AND
 				 FNA.RDB$FUNCTION_NAME EQ FUN.RDB$FUNCTION_NAME AND
 				 FNA.RDB$PACKAGE_NAME MISSING
 			SORTED BY FNA.RDB$ARGUMENT_POSITION
@@ -3298,7 +3295,6 @@ static void list_schemas()
 	bool first = true;
 
 	FOR SCH IN RDB$SCHEMAS
-		CROSS DB IN RDB$DATABASE
 		WITH (SCH.RDB$SYSTEM_FLAG NE 1 OR SCH.RDB$SYSTEM_FLAG MISSING)
 		SORTED BY SCH.RDB$SCHEMA_NAME
 	{

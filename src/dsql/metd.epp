@@ -706,7 +706,7 @@ dsql_udf* METD_get_function(jrd_tra* transaction, DsqlCompilerScratch* dsqlScrat
 
 			FOR(REQUEST_HANDLE handle3 TRANSACTION_HANDLE transaction)
 				F IN RDB$FIELDS WITH
-				F.RDB$SCHEMA_NAME EQUIV X.RDB$FIELD_SOURCE_SCHEMA_NAME AND
+				F.RDB$SCHEMA_NAME EQ X.RDB$FIELD_SOURCE_SCHEMA_NAME AND
 				F.RDB$FIELD_NAME EQ X.RDB$FIELD_SOURCE
 			{
 				if (X.RDB$ARGUMENT_POSITION == return_arg)
@@ -1076,7 +1076,7 @@ dsql_prc* METD_get_procedure(jrd_tra* transaction, DsqlCompilerScratch* dsqlScra
 				 PR.RDB$PROCEDURE_NAME EQ qualifiedName.object.c_str() AND
 				 PR.RDB$PARAMETER_TYPE = type AND
 				 PR.RDB$PACKAGE_NAME EQUIV NULLIF(qualifiedName.package.c_str(), '') AND
-				 FLD.RDB$SCHEMA_NAME EQUIV PR.RDB$FIELD_SOURCE_SCHEMA_NAME AND
+				 FLD.RDB$SCHEMA_NAME EQ PR.RDB$FIELD_SOURCE_SCHEMA_NAME AND
 				 FLD.RDB$FIELD_NAME EQ PR.RDB$FIELD_SOURCE
 			SORTED BY DESCENDING PR.RDB$PARAMETER_NUMBER
 		{
@@ -1134,10 +1134,7 @@ dsql_prc* METD_get_procedure(jrd_tra* transaction, DsqlCompilerScratch* dsqlScra
 				parameter->segLength = FLD.RDB$SEGMENT_LENGTH;
 
 			if (!PR.RDB$FIELD_NAME.NULL)
-			{
-				fb_utils::exact_name(PR.RDB$FIELD_NAME);
 				parameter->typeOfName = QualifiedName(PR.RDB$FIELD_NAME, PR.RDB$FIELD_SOURCE_SCHEMA_NAME);
-			}
 
 			if (!PR.RDB$RELATION_NAME.NULL)
 				parameter->typeOfTable = QualifiedName(PR.RDB$RELATION_NAME, PR.RDB$RELATION_SCHEMA_NAME);
@@ -1478,7 +1475,7 @@ dsql_rel* METD_get_view_base(jrd_tra* transaction, DsqlCompilerScratch* dsqlScra
 
 			FOR(REQUEST_HANDLE handle2 TRANSACTION_HANDLE transaction)
 				RFL IN RDB$RELATION_FIELDS
-				WITH RFL.RDB$SCHEMA_NAME EQUIV X.RDB$SCHEMA_NAME AND
+				WITH RFL.RDB$SCHEMA_NAME EQ X.RDB$SCHEMA_NAME AND
 					 RFL.RDB$RELATION_NAME EQ X.RDB$VIEW_NAME
 			{
 				if (RFL.RDB$BASE_FIELD.NULL || RFL.RDB$FIELD_NAME.NULL)
@@ -1575,8 +1572,7 @@ bool METD_get_view_relation(jrd_tra* transaction, DsqlCompilerScratch* dsqlScrat
 			if ((relation = METD_get_relation(transaction, dsqlScratch, relationName)))
 				return true;
 
-			const QualifiedName procName(X.RDB$RELATION_NAME, X.RDB$RELATION_SCHEMA_NAME,
-				X.RDB$PACKAGE_NAME.NULL ? nullptr : X.RDB$PACKAGE_NAME);
+			const QualifiedName procName(X.RDB$RELATION_NAME, X.RDB$RELATION_SCHEMA_NAME, X.RDB$PACKAGE_NAME);
 
 			if ( (procedure = METD_get_procedure(transaction, dsqlScratch, procName)) )
 				return true;

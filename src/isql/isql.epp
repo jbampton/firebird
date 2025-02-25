@@ -1438,7 +1438,7 @@ SSHORT ISQL_get_char_length(
 }
 
 
-void ISQL_get_character_sets(SSHORT char_set_id, SSHORT collation,
+bool ISQL_get_character_sets(SSHORT char_set_id, SSHORT collation,
 							 SSHORT default_char_set_id, Get what,
 							 bool not_null, string& text)
 {
@@ -1459,7 +1459,7 @@ void ISQL_get_character_sets(SSHORT char_set_id, SSHORT collation,
 	text.clear();
 
 	if (!frontendTransaction())
-		return;
+		return false;
 
 	FOR FIRST 1
 		COL IN RDB$COLLATIONS CROSS
@@ -1491,7 +1491,7 @@ void ISQL_get_character_sets(SSHORT char_set_id, SSHORT collation,
 			if (!charsetIsDefault || !collationIsDefault)
 			{
 				text.printf(" CHARACTER SET %s%s", IUTILS_name_to_string(charSetName).c_str(), notNullStr);
-				return;
+				return true;
 			}
 			break;
 
@@ -1500,7 +1500,7 @@ void ISQL_get_character_sets(SSHORT char_set_id, SSHORT collation,
 			if (!collationIsDefault)
 			{
 				text.printf("%s COLLATE %s%s", notNullStr, IUTILS_name_to_string(collationName).c_str());
-				return;
+				return true;
 			}
 			break;
 
@@ -1518,7 +1518,7 @@ void ISQL_get_character_sets(SSHORT char_set_id, SSHORT collation,
 						notNullStr,
 						IUTILS_name_to_string(collationName).c_str());
 				}
-				return;
+				return true;
 			}
 			break;
 		}
@@ -1530,7 +1530,7 @@ void ISQL_get_character_sets(SSHORT char_set_id, SSHORT collation,
 	END_FOR
 	ON_ERROR
 		ISQL_errmsg(fbStatus);
-		return;
+		return text.hasData();
 	END_ERROR
 
 #ifdef DEV_BUILD
@@ -1543,6 +1543,8 @@ void ISQL_get_character_sets(SSHORT char_set_id, SSHORT collation,
 		STDERROUT(Print_buffer);
 	}
 #endif
+
+	return text.hasData();
 }
 
 
@@ -1959,7 +1961,8 @@ bool ISQL_get_null_flag(const QualifiedMetaString& rel_name,
 
 	FOR FLD IN RDB$FIELDS CROSS
 		RFR IN RDB$RELATION_FIELDS
-		WITH RFR.RDB$FIELD_SOURCE EQ FLD.RDB$FIELD_NAME AND
+		WITH RFR.RDB$FIELD_SOURCE_SCHEMA_NAME EQUIV FLD.RDB$SCHEMA_NAME AND
+			 RFR.RDB$FIELD_SOURCE EQ FLD.RDB$FIELD_NAME AND
 			 RFR.RDB$SCHEMA_NAME EQUIV NULLIF(rel_name.schema.c_str(), '') AND
 			 RFR.RDB$RELATION_NAME EQ rel_name.object.c_str() AND
 			 RFR.RDB$FIELD_NAME EQ field_name.c_str()
@@ -8003,13 +8006,14 @@ static void print_message(Firebird::IMessageMetadata* msg, const char* dir)
 			break;
 		}
 
-		const auto schema = msg->getSchema(fbStatus, i);
+		const auto schema = isqlGlob.major_ods >= ODS_VERSION14 ?
+			msg->getSchema(fbStatus, i) : "";
 
 		isqlGlob.printf("\n");
 		isqlGlob.printf("  :  name: %s  alias: %s\n",
 				msg->getField(fbStatus, i), msg->getAlias(fbStatus, i));
 		isqlGlob.printf("  : table: %s  schema: %s  owner: %s\n",
-				msg->getRelation(fbStatus, i), (schema ? schema : ""), msg->getOwner(fbStatus, i));
+				msg->getRelation(fbStatus, i), schema, msg->getOwner(fbStatus, i));
 	}
 }
 
