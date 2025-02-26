@@ -147,7 +147,8 @@ Function* Function::lookup(thread_db* tdbb, const QualifiedName& name, bool nosc
 
 	FOR(REQUEST_HANDLE request)
 		X IN RDB$FUNCTIONS
-		WITH X.RDB$FUNCTION_NAME EQ name.object.c_str() AND
+		WITH X.RDB$SCHEMA_NAME EQ name.schema.c_str() AND
+			 X.RDB$FUNCTION_NAME EQ name.object.c_str() AND
 			 X.RDB$PACKAGE_NAME EQUIV NULLIF(name.package.c_str(), '')
 	{
 		function = loadMetadata(tdbb, X.RDB$FUNCTION_ID, noscan, 0);
@@ -316,7 +317,7 @@ Function* Function::loadMetadata(thread_db* tdbb, USHORT id, bool noscan, USHORT
 
 					FOR(REQUEST_HANDLE request_arg_fld)
 						F IN RDB$FIELDS
-						WITH F.RDB$SCHEMA_NAME EQUIV Y.RDB$FIELD_SOURCE_SCHEMA_NAME AND
+						WITH F.RDB$SCHEMA_NAME = Y.RDB$FIELD_SOURCE_SCHEMA_NAME AND
 							 F.RDB$FIELD_NAME = Y.RDB$FIELD_SOURCE
 					{
 						DSC_make_descriptor(&parameter->prm_desc, F.RDB$FIELD_TYPE,

@@ -296,7 +296,7 @@ public:
 
 	Firebird::string toQuotedString() const
 	{
-		return Firebird::MetaString(c_str(), length()).toQuotedString();
+		return Firebird::toQuotedString(*this);
 	}
 
 	bool operator==(const char* s) const

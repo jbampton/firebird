@@ -967,8 +967,9 @@ void ExtEngineManager::Function::execute(thread_db* tdbb, Request* request, jrd_
 		const MetaString& userName = udf->invoker ? udf->invoker->getUserName() : "";
 		ContextManager<IExternalFunction> ctxManager(tdbb, attInfo, function,
 			(udf->getName().package.isEmpty() ?
-			CallerName(obj_udf, udf->getName(), userName) :
-			CallerName(obj_package_header, QualifiedName(udf->getName().package, udf->getName().schema), userName)));
+				CallerName(obj_udf, udf->getName(), userName) :
+				CallerName(obj_package_header,
+					QualifiedName(udf->getName().package, udf->getName().schema), userName)));
 
 		EngineCheckout cout(tdbb, FB_FUNCTION, checkoutType(attInfo->engine));
 

@@ -417,11 +417,8 @@ void PreparedStatement::init(thread_db* tdbb, Attachment* attachment, jrd_tra* t
 	const Firebird::string& text, bool isInternalRequest)
 {
 	auto newSchemaSearchPath = isInternalRequest ?
-		makeRef(FB_NEW_POOL(*attachment->att_pool) AnyRef<ObjectsArray<MetaString>>(*attachment->att_pool)) :
+		attachment->att_system_schema_search_path :
 		attachment->att_schema_search_path;
-
-	if (isInternalRequest)
-		newSchemaSearchPath->push(SYSTEM_SCHEMA);
 
 	AutoSetRestore<RefPtr<AnyRef<ObjectsArray<MetaString>>>> autoSchemaSearchPath(
 		&attachment->att_schema_search_path, newSchemaSearchPath);

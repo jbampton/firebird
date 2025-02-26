@@ -726,7 +726,7 @@ void RelationSourceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 
 	if (dsqlContext->ctx_alias.hasData())
 	{
-		const auto contextAliases = dsqlContext->getConcatenatedAlias();
+		const auto& contextAliases = dsqlContext->getConcatenatedAlias();
 		dsqlScratch->appendMetaString(contextAliases.c_str());
 	}
 
@@ -1379,7 +1379,7 @@ void ProcedureSourceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 		{
 			dsqlScratch->appendUChar(blr_invsel_procedure_alias);
 
-			const auto contextAliases = dsqlContext->getConcatenatedAlias();
+			const auto& contextAliases = dsqlContext->getConcatenatedAlias();
 			dsqlScratch->appendMetaString(contextAliases.c_str());
 		}
 
@@ -1393,7 +1393,7 @@ void ProcedureSourceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 		dsqlScratch->appendUChar(blr_subproc);
 		dsqlScratch->appendMetaString(dsqlProcedure->prc_name.object.c_str());
 
-		const auto contextAliases = dsqlContext->getConcatenatedAlias();
+		const auto& contextAliases = dsqlContext->getConcatenatedAlias();
 		dsqlScratch->appendMetaString(contextAliases.c_str());
 	}
 	else
@@ -1422,7 +1422,7 @@ void ProcedureSourceNode::genBlr(DsqlCompilerScratch* dsqlScratch)
 
 		if (dsqlContext->ctx_alias.hasData())
 		{
-			const auto contextAliases = dsqlContext->getConcatenatedAlias();
+			const auto& contextAliases = dsqlContext->getConcatenatedAlias();
 			dsqlScratch->appendMetaString(contextAliases.c_str());
 		}
 	}

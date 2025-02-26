@@ -1171,8 +1171,7 @@ namespace
 			// If the found object is also being deleted, there's no dependency
 
 			if (!find_depend_in_dfw(tdbb,
-					QualifiedName(DEP.RDB$DEPENDENT_NAME,
-						(DEP.RDB$DEPENDENT_SCHEMA_NAME.NULL ? "" : DEP.RDB$DEPENDENT_SCHEMA_NAME)),
+					QualifiedName(DEP.RDB$DEPENDENT_NAME, DEP.RDB$DEPENDENT_SCHEMA_NAME),
 					DEP.RDB$DEPENDENT_TYPE, 0, transaction))
 			{
 				string& name = names.add();
@@ -1189,7 +1188,7 @@ namespace
 			status << Arg::Gds(isc_no_meta_update) << Arg::Gds(isc_no_delete);
 
 			for (auto& name : names)
-				status << Arg::Gds(isc_parameter_name) << Arg::Str(name);
+				status << Arg::Gds(isc_parameter_name) << name;
 
 			status << Arg::Gds(isc_dependency) << Arg::Num(depCount);
 
@@ -1260,8 +1259,7 @@ namespace
 			// If the found object is also being deleted, there's no dependency
 
 			if (!find_depend_in_dfw(tdbb,
-					QualifiedName(DEP.RDB$DEPENDENT_NAME,
-						(DEP.RDB$DEPENDENT_SCHEMA_NAME.NULL ? "" : DEP.RDB$DEPENDENT_SCHEMA_NAME)),
+					QualifiedName(DEP.RDB$DEPENDENT_NAME, DEP.RDB$DEPENDENT_SCHEMA_NAME),
 					DEP.RDB$DEPENDENT_TYPE, 0, transaction))
 			{
 				string& name = names.add();
@@ -1278,7 +1276,7 @@ namespace
 			status << Arg::Gds(isc_no_meta_update) << Arg::Gds(isc_no_delete);
 
 			for (auto& name : names)
-				status << Arg::Gds(isc_parameter_name) << Arg::Str(name);
+				status << Arg::Gds(isc_parameter_name) << name;
 
 			status << Arg::Gds(isc_dependency) << Arg::Num(depCount);
 
@@ -2390,7 +2388,7 @@ static bool check_not_null(thread_db* tdbb, SSHORT phase, DeferredWork* work, jr
 					{
 						hasError = true;
 						errs << Arg::Gds(isc_cannot_make_not_null) <<
-								(*relation->rel_fields)[fields[i]]->fld_name <<
+								(*relation->rel_fields)[fields[i]]->fld_name.toQuotedString() <<
 								relation->rel_name.toQuotedString();
 					}
 				}
@@ -2873,8 +2871,7 @@ static void check_dependencies(thread_db* tdbb,
 			// If the found object is also being deleted, there's no dependency
 
 			if (!find_depend_in_dfw(tdbb,
-					QualifiedName(DEP.RDB$DEPENDENT_NAME,
-						(DEP.RDB$DEPENDENT_SCHEMA_NAME.NULL ? "" : DEP.RDB$DEPENDENT_SCHEMA_NAME)),
+					QualifiedName(DEP.RDB$DEPENDENT_NAME, DEP.RDB$DEPENDENT_SCHEMA_NAME),
 					DEP.RDB$DEPENDENT_TYPE, 0, transaction))
 			{
 				++dep_counts[DEP.RDB$DEPENDENT_TYPE];
@@ -2897,8 +2894,7 @@ static void check_dependencies(thread_db* tdbb,
 			// If the found object is also being deleted, there's no dependency
 
 			if (!find_depend_in_dfw(tdbb,
-					QualifiedName(DEP.RDB$DEPENDENT_NAME,
-						(DEP.RDB$DEPENDENT_SCHEMA_NAME.NULL ? "" : DEP.RDB$DEPENDENT_SCHEMA_NAME)),
+					QualifiedName(DEP.RDB$DEPENDENT_NAME, DEP.RDB$DEPENDENT_SCHEMA_NAME),
 					DEP.RDB$DEPENDENT_TYPE,
 									0, transaction))
 			{
@@ -3446,7 +3442,7 @@ static bool create_index(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_
 						ERR_post(Arg::Gds(isc_no_meta_update) <<
 								 Arg::Gds(isc_inval_key_posn) <<
 								 // Msg358: invalid key position
-								 Arg::Gds(isc_field_name) << Arg::Str(RFR.RDB$FIELD_NAME) <<
+								 Arg::Gds(isc_field_name) << MetaName(RFR.RDB$FIELD_NAME).toQuotedString() <<
 								 Arg::Gds(isc_index_name) << work->getQualifiedName().toQuotedString());
 					}
 					else if (FLD.RDB$FIELD_TYPE == blr_blob)
@@ -3533,7 +3529,7 @@ static bool create_index(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_
 			{
 				MetaName constraint_name;
 				MET_lookup_cnstrt_for_index(tdbb, constraint_name, work->getQualifiedName());
-				ERR_post(Arg::Gds(isc_partner_idx_not_found) << Arg::Str(constraint_name));
+				ERR_post(Arg::Gds(isc_partner_idx_not_found) << constraint_name.toQuotedString());
 			}
 
 			// Get an protected_read lock on the both relations if the index being
@@ -5176,7 +5172,7 @@ static bool delete_rfr(thread_db* tdbb, SSHORT phase, DeferredWork* work, jrd_tr
 		{
 			ERR_post(Arg::Gds(isc_no_meta_update) <<
 					 Arg::Gds(isc_no_delete) <<	// Msg353: can not delete
-					 Arg::Gds(isc_field_name) << Arg::Str(f) <<
+					 Arg::Gds(isc_field_name) << f.toQuotedString() <<
 					 Arg::Gds(isc_dependency) << Arg::Num(field_count));
 					 // Msg310: there are %ld dependencies
 		}
@@ -6689,8 +6685,8 @@ static blb* setup_triggers(thread_db* tdbb, jrd_rel* relation, bool null_view,
 				CROSS RCN IN RDB$RELATION_CONSTRAINTS
 				WITH TRG.RDB$SCHEMA_NAME EQ CHK.RDB$SCHEMA_NAME AND
 					 TRG.RDB$TRIGGER_NAME EQ CHK.RDB$TRIGGER_NAME AND
-					 CHK.RDB$CONSTRAINT_NAME EQ RCN.RDB$CONSTRAINT_NAME AND
 					 CHK.RDB$SCHEMA_NAME EQ RCN.RDB$SCHEMA_NAME AND
+					 CHK.RDB$CONSTRAINT_NAME EQ RCN.RDB$CONSTRAINT_NAME AND
 					 (RCN.RDB$CONSTRAINT_TYPE EQ CHECK_CNSTRT OR
 				      RCN.RDB$CONSTRAINT_TYPE EQ FOREIGN_KEY)
 			)
@@ -6721,8 +6717,8 @@ static blb* setup_triggers(thread_db* tdbb, jrd_rel* relation, bool null_view,
 				CROSS RCN IN RDB$RELATION_CONSTRAINTS
 				WITH TRG.RDB$SCHEMA_NAME EQ CHK.RDB$SCHEMA_NAME AND
 					 TRG.RDB$TRIGGER_NAME EQ CHK.RDB$TRIGGER_NAME AND
-					 CHK.RDB$CONSTRAINT_NAME EQ RCN.RDB$CONSTRAINT_NAME AND
 					 CHK.RDB$SCHEMA_NAME EQ RCN.RDB$SCHEMA_NAME AND
+					 CHK.RDB$CONSTRAINT_NAME EQ RCN.RDB$CONSTRAINT_NAME AND
 					 (RCN.RDB$CONSTRAINT_TYPE EQ CHECK_CNSTRT OR
 					  RCN.RDB$CONSTRAINT_TYPE EQ FOREIGN_KEY)
 			  )

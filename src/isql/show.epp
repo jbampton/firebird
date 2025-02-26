@@ -1091,13 +1091,15 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 			if (name->schema.hasData() && name->schema != R.RDB$SCHEMA_NAME)
 				continue;
 
+			const QualifiedMetaString relationName(R.RDB$RELATION_NAME, R.RDB$SCHEMA_NAME);
+
 			// This query only finds tables, eliminating owner privileges
 
 			FOR PRV IN RDB$USER_PRIVILEGES CROSS
 				REL IN RDB$RELATIONS
 				WITH PRV.RDB$GRANTOR NOT MISSING AND
-					 PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(R.RDB$SCHEMA_NAME, '') AND
-					 PRV.RDB$RELATION_NAME EQ name->object.c_str() AND
+					 PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(relationName.schema.c_str(), '') AND
+					 PRV.RDB$RELATION_NAME EQ relationName.object.c_str() AND
 					 REL.RDB$SCHEMA_NAME EQUIV PRV.RDB$RELATION_SCHEMA_NAME AND
 					 REL.RDB$RELATION_NAME EQ PRV.RDB$RELATION_NAME AND
 					 PRV.RDB$PRIVILEGE     NE 'M' AND
@@ -1134,7 +1136,7 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 
 					isqlGlob.printf("GRANT %s ON %s TO %s%s%s%s%s",
 						combine_privileges.c_str(),
-						IUTILS_name_to_string(name.value()).c_str(),
+						IUTILS_name_to_string(relationName).c_str(),
 						user_string.c_str(), with_option, granted_by(prev_grantor, false).c_str(),
 						terminator, NEWLINE);
 
@@ -1198,7 +1200,7 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 
 				isqlGlob.printf("GRANT %s ON %s TO %s%s%s%s%s",
 					combine_privileges.c_str(),
-					IUTILS_name_to_string(name.value()).c_str(),
+					IUTILS_name_to_string(relationName).c_str(),
 					user_string.c_str(), with_option, granted_by(prev_grantor, false).c_str(),
 					terminator, NEWLINE);
 			}
@@ -1224,14 +1226,16 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 			if (name->schema.hasData() && name->schema != P.RDB$SCHEMA_NAME)
 				continue;
 
+			const QualifiedMetaString procedureName(P.RDB$PROCEDURE_NAME, P.RDB$SCHEMA_NAME);
+
 			// Part two is for stored procedures only
 
 			FOR PRV IN RDB$USER_PRIVILEGES CROSS
 				PRC IN RDB$PROCEDURES WITH
 				PRV.RDB$GRANTOR NOT MISSING AND
 				PRV.RDB$OBJECT_TYPE = obj_procedure AND
-				PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(P.RDB$SCHEMA_NAME, '') AND
-				PRV.RDB$RELATION_NAME EQ name->object.c_str() AND
+				PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(procedureName.schema.c_str(), '') AND
+				PRV.RDB$RELATION_NAME EQ procedureName.object.c_str() AND
 				PRC.RDB$SCHEMA_NAME EQUIV PRV.RDB$RELATION_SCHEMA_NAME AND
 				PRC.RDB$PROCEDURE_NAME EQ PRV.RDB$RELATION_NAME AND
 				PRV.RDB$PRIVILEGE EQ 'X' AND
@@ -1252,7 +1256,7 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 					with_option[0] = '\0';
 
 				isqlGlob.printf("GRANT EXECUTE ON PROCEDURE %s TO %s%s%s%s%s",
-						 IUTILS_name_to_string(name.value()).c_str(),
+						 IUTILS_name_to_string(procedureName).c_str(),
 						 user_string.c_str(), with_option,
 						 granted_by(PRV.RDB$GRANTOR, PRV.RDB$GRANTOR.NULL).c_str(), terminator, NEWLINE);
 			}
@@ -1273,7 +1277,6 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 	}
 
 	// No procedure called "object" was found, try role "object"
-	MetaString role_name;
 
 	if ((obj_type == obj_sql_role || obj_type == obj_any) && name->schema.isEmpty())
 	{
@@ -1295,7 +1298,7 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 					 PRV.RDB$PRIVILEGE EQ 'M'
 				SORTED BY PRV.RDB$USER_SCHEMA_NAME, PRV.RDB$USER
 			{
-				role_name = PRV.RDB$RELATION_NAME;
+				MetaString role_name(PRV.RDB$RELATION_NAME);
 
 				user_string = IUTILS_name_to_string(PRV.RDB$USER);
 
@@ -1347,12 +1350,14 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 				if (name->schema.hasData() && name->schema != P.RDB$SCHEMA_NAME)
 					continue;
 
+				const QualifiedMetaString packageName(P.RDB$PACKAGE_NAME, P.RDB$SCHEMA_NAME);
+
 				FOR PRV IN RDB$USER_PRIVILEGES CROSS
 					PACK IN RDB$PACKAGES WITH
 					PRV.RDB$GRANTOR NOT MISSING AND
 					PRV.RDB$OBJECT_TYPE = obj_package_header AND
-					PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(P.RDB$SCHEMA_NAME, '') AND
-					PRV.RDB$RELATION_NAME EQ name->object.c_str() AND
+					PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(packageName.schema.c_str(), '') AND
+					PRV.RDB$RELATION_NAME EQ packageName.object.c_str() AND
 					PACK.RDB$SCHEMA_NAME EQUIV PRV.RDB$RELATION_SCHEMA_NAME AND
 					PACK.RDB$PACKAGE_NAME EQ PRV.RDB$RELATION_NAME AND
 					PRV.RDB$PRIVILEGE EQ 'X' AND
@@ -1372,7 +1377,7 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 						with_option[0] = '\0';
 
 					isqlGlob.printf("GRANT EXECUTE ON PACKAGE %s TO %s%s%s%s%s",
-							 IUTILS_name_to_string(name.value()).c_str(),
+							 IUTILS_name_to_string(packageName).c_str(),
 							 user_string.c_str(), with_option,
 							 granted_by(PRV.RDB$GRANTOR, PRV.RDB$GRANTOR.NULL).c_str(),
 							 terminator, NEWLINE);
@@ -1406,12 +1411,14 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 				if (name->schema.hasData() && name->schema != F.RDB$SCHEMA_NAME)
 					continue;
 
+				const QualifiedMetaString functionName(F.RDB$FUNCTION_NAME, F.RDB$SCHEMA_NAME);
+
 				FOR PRV IN RDB$USER_PRIVILEGES CROSS
 					FUN IN RDB$FUNCTIONS WITH
 					PRV.RDB$GRANTOR NOT MISSING AND
 					PRV.RDB$OBJECT_TYPE = obj_udf AND
-					PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(F.RDB$SCHEMA_NAME, '') AND
-					PRV.RDB$RELATION_NAME EQ name->object.c_str() AND
+					PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(functionName.schema.c_str(), '') AND
+					PRV.RDB$RELATION_NAME EQ functionName.object.c_str() AND
 					FUN.RDB$SCHEMA_NAME EQUIV PRV.RDB$RELATION_SCHEMA_NAME AND
 					FUN.RDB$FUNCTION_NAME EQ PRV.RDB$RELATION_NAME AND
 					FUN.RDB$PACKAGE_NAME MISSING AND
@@ -1424,7 +1431,8 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 
 					first = false;
 
-					set_grantee(PRV.RDB$USER_TYPE, QualifiedMetaString(PRV.RDB$USER, PRV.RDB$USER_SCHEMA_NAME), user_string);
+					set_grantee(PRV.RDB$USER_TYPE,
+						QualifiedMetaString(PRV.RDB$USER, PRV.RDB$USER_SCHEMA_NAME), user_string);
 
 					if (PRV.RDB$GRANT_OPTION)
 						strcpy(with_option, " WITH GRANT OPTION");
@@ -1432,7 +1440,7 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 						with_option[0] = '\0';
 
 					isqlGlob.printf("GRANT EXECUTE ON FUNCTION %s TO %s%s%s%s%s",
-							 IUTILS_name_to_string(name.value()).c_str(),
+							 IUTILS_name_to_string(functionName).c_str(),
 							 user_string.c_str(), with_option,
 							 granted_by(PRV.RDB$GRANTOR, PRV.RDB$GRANTOR.NULL).c_str(),
 							 terminator, NEWLINE);
@@ -1465,12 +1473,14 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 				if (name->schema.hasData() && name->schema != G.RDB$SCHEMA_NAME)
 					continue;
 
+				const QualifiedMetaString generatorName(G.RDB$GENERATOR_NAME, G.RDB$SCHEMA_NAME);
+
 				FOR PRV IN RDB$USER_PRIVILEGES CROSS
 					GEN IN RDB$GENERATORS WITH
 					PRV.RDB$GRANTOR NOT MISSING AND
 					PRV.RDB$OBJECT_TYPE = obj_generator AND
-					PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(G.RDB$SCHEMA_NAME, '') AND
-					PRV.RDB$RELATION_NAME EQ name->object.c_str() AND
+					PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(generatorName.schema.c_str(), '') AND
+					PRV.RDB$RELATION_NAME EQ generatorName.object.c_str() AND
 					GEN.RDB$SCHEMA_NAME EQUIV PRV.RDB$RELATION_SCHEMA_NAME AND
 					GEN.RDB$GENERATOR_NAME EQ PRV.RDB$RELATION_NAME AND
 					PRV.RDB$PRIVILEGE EQ 'G' AND
@@ -1482,7 +1492,8 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 
 					first = false;
 
-					set_grantee(PRV.RDB$USER_TYPE, QualifiedMetaString(PRV.RDB$USER, PRV.RDB$USER_SCHEMA_NAME), user_string);
+					set_grantee(PRV.RDB$USER_TYPE,
+						QualifiedMetaString(PRV.RDB$USER, PRV.RDB$USER_SCHEMA_NAME), user_string);
 
 					if (PRV.RDB$GRANT_OPTION)
 						strcpy(with_option, " WITH GRANT OPTION");
@@ -1490,7 +1501,7 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 						with_option[0] = '\0';
 
 					isqlGlob.printf("GRANT USAGE ON SEQUENCE %s TO %s%s%s%s%s",
-							 IUTILS_name_to_string(name.value()).c_str(),
+							 IUTILS_name_to_string(generatorName).c_str(),
 							 user_string.c_str(), with_option,
 							 granted_by(PRV.RDB$GRANTOR, PRV.RDB$GRANTOR.NULL).c_str(),
 							 terminator, NEWLINE);
@@ -1523,12 +1534,14 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 				if (name->schema.hasData() && name->schema != E.RDB$SCHEMA_NAME)
 					continue;
 
+				const QualifiedMetaString exceptionName(E.RDB$EXCEPTION_NAME, E.RDB$SCHEMA_NAME);
+
 				FOR PRV IN RDB$USER_PRIVILEGES CROSS
 					XCP IN RDB$EXCEPTIONS WITH
 					PRV.RDB$GRANTOR NOT MISSING AND
 					PRV.RDB$OBJECT_TYPE = obj_exception AND
-					PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(E.RDB$SCHEMA_NAME, '') AND
-					PRV.RDB$RELATION_NAME EQ name->object.c_str() AND
+					PRV.RDB$RELATION_SCHEMA_NAME EQUIV NULLIF(exceptionName.schema.c_str(), '') AND
+					PRV.RDB$RELATION_NAME EQ exceptionName.object.c_str() AND
 					XCP.RDB$SCHEMA_NAME EQUIV PRV.RDB$RELATION_SCHEMA_NAME AND
 					XCP.RDB$EXCEPTION_NAME EQ PRV.RDB$RELATION_NAME AND
 					PRV.RDB$PRIVILEGE EQ 'G' AND
@@ -1540,7 +1553,8 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 
 					first = false;
 
-					set_grantee(PRV.RDB$USER_TYPE, QualifiedMetaString(PRV.RDB$USER, PRV.RDB$USER_SCHEMA_NAME), user_string);
+					set_grantee(PRV.RDB$USER_TYPE,
+						QualifiedMetaString(PRV.RDB$USER, PRV.RDB$USER_SCHEMA_NAME), user_string);
 
 					if (PRV.RDB$GRANT_OPTION)
 						strcpy(with_option, " WITH GRANT OPTION");
@@ -1548,7 +1562,7 @@ processing_state SHOW_grants(const std::optional<QualifiedMetaString>& name,
 						with_option[0] = '\0';
 
 					isqlGlob.printf("GRANT USAGE ON EXCEPTION %s TO %s%s%s%s%s",
-							 IUTILS_name_to_string(name.value()).c_str(),
+							 IUTILS_name_to_string(exceptionName).c_str(),
 							 user_string.c_str(), with_option,
 							 granted_by(PRV.RDB$GRANTOR, PRV.RDB$GRANTOR.NULL).c_str(),
 							 terminator, NEWLINE);
@@ -3030,7 +3044,7 @@ static processing_state show_comments(const commentMode showextract, const char*
 
 		FOR RF IN RDB$RELATION_FIELDS
 			WITH RF.RDB$SCHEMA_NAME EQUIV NULLIF(name.schema.c_str(), '') AND
-				 RF.RDB$RELATION_NAME = VW.RDB$RELATION_NAME AND
+				 RF.RDB$RELATION_NAME = name.object.c_str() AND
 				 RF.RDB$DESCRIPTION NOT MISSING
 			SORTED BY RF.RDB$FIELD_POSITION
 		{
@@ -3064,7 +3078,7 @@ static processing_state show_comments(const commentMode showextract, const char*
 
 		FOR PA IN RDB$PROCEDURE_PARAMETERS
 			WITH PA.RDB$SCHEMA_NAME EQUIV NULLIF(name.schema.c_str(), '') AND
-				 PA.RDB$PROCEDURE_NAME = PR.RDB$PROCEDURE_NAME AND
+				 PA.RDB$PROCEDURE_NAME = name.object.c_str() AND
 				 PA.RDB$PACKAGE_NAME EQUIV NULLIF(name.package.c_str(), '') AND
 				 PA.RDB$DESCRIPTION NOT MISSING
 			SORTED BY PA.RDB$PARAMETER_TYPE, PA.RDB$PARAMETER_NUMBER
@@ -3120,7 +3134,7 @@ static processing_state show_comments(const commentMode showextract, const char*
 
 		FOR ARG IN RDB$FUNCTION_ARGUMENTS
 			WITH ARG.RDB$SCHEMA_NAME EQUIV NULLIF(name.schema.c_str(), '') AND
-				 ARG.RDB$FUNCTION_NAME = UD.RDB$FUNCTION_NAME AND
+				 ARG.RDB$FUNCTION_NAME = name.object.c_str() AND
 				 ARG.RDB$PACKAGE_NAME EQUIV NULLIF(name.package.c_str(), '') AND
 				 ARG.RDB$DESCRIPTION NOT MISSING
 			SORTED BY ARG.RDB$ARGUMENT_POSITION
@@ -3648,9 +3662,9 @@ static processing_state show_dependencies(const QualifiedMetaString& name, int o
 			CROSS FLD IN RDB$FIELDS
 			CROSS DEP3 IN RDB$DEPENDENCIES
 			WITH RFR.RDB$RELATION_NAME = name.object.c_str() AND
-				 RFR.RDB$FIELD_SOURCE_SCHEMA_NAME EQUIV FLD.RDB$SCHEMA_NAME AND
 				 REL.RDB$SCHEMA_NAME EQUIV RFR.RDB$SCHEMA_NAME AND
 				 REL.RDB$RELATION_NAME = RFR.RDB$RELATION_NAME AND
+				 RFR.RDB$FIELD_SOURCE_SCHEMA_NAME EQUIV FLD.RDB$SCHEMA_NAME AND
 				 RFR.RDB$FIELD_SOURCE = FLD.RDB$FIELD_NAME AND
 				 DEP3.RDB$DEPENDENT_SCHEMA_NAME EQUIV RFR.RDB$FIELD_SOURCE_SCHEMA_NAME AND
 				 DEP3.RDB$DEPENDENT_NAME = RFR.RDB$FIELD_SOURCE AND
@@ -3982,7 +3996,7 @@ static processing_state show_exceptions(const std::optional<QualifiedMetaString>
 			FOR DEP IN RDB$DEPENDENCIES WITH
 				DEP.RDB$DEPENDED_ON_TYPE = obj_exception AND
 				DEP.RDB$DEPENDED_ON_SCHEMA_NAME EQUIV NULLIF(exceptionName.schema.c_str(), '') AND
-				DEP.RDB$DEPENDED_ON_NAME EQ EXC.RDB$EXCEPTION_NAME
+				DEP.RDB$DEPENDED_ON_NAME EQ exceptionName.object.c_str()
 				SORTED BY DEP.RDB$DEPENDENT_TYPE, DEP.RDB$DEPENDENT_NAME
 			{
 				if (first_dep)
@@ -4157,7 +4171,7 @@ static processing_state show_functions(const std::optional<QualifiedMetaString>&
 
 				FOR DEP IN RDB$DEPENDENCIES
 					WITH DEP.RDB$DEPENDENT_SCHEMA_NAME EQUIV NULLIF(functionName.schema.c_str(), '') AND
-						 DEP.RDB$DEPENDENT_NAME EQ FUN.RDB$FUNCTION_NAME
+						 DEP.RDB$DEPENDENT_NAME EQ functionName.object.c_str()
 					REDUCED TO DEP.RDB$DEPENDED_ON_SCHEMA_NAME, DEP.RDB$DEPENDED_ON_TYPE, DEP.RDB$DEPENDED_ON_NAME
 					SORTED BY DEP.RDB$DEPENDED_ON_SCHEMA_NAME, DEP.RDB$DEPENDED_ON_TYPE, DEP.RDB$DEPENDED_ON_NAME
 				{
@@ -4252,12 +4266,9 @@ static processing_state show_func(const QualifiedMetaString& name)
 			 FUN.RDB$FUNCTION_NAME EQ name.object.c_str() AND
 			 FUN.RDB$PACKAGE_NAME EQUIV NULLIF(name.package.c_str(), '')
 	{
-		const QualifiedMetaString functionName(
-			FUN.RDB$FUNCTION_NAME, FUN.RDB$SCHEMA_NAME, FUN.RDB$PACKAGE_NAME);
-
 		first = false;
 
-		isqlGlob.printf("Function: %s%s", IUTILS_name_to_string(functionName).c_str(), NEWLINE);
+		isqlGlob.printf("Function: %s%s", IUTILS_name_to_string(name).c_str(), NEWLINE);
 
 		if (!FUN.RDB$DETERMINISTIC_FLAG.NULL && FUN.RDB$DETERMINISTIC_FLAG)
 			isqlGlob.printf("Deterministic function%s", NEWLINE);
@@ -4296,6 +4307,7 @@ static processing_state show_func(const QualifiedMetaString& name)
 			WITH ARG.RDB$SCHEMA_NAME EQUIV NULLIF(name.schema.c_str(), '') AND
 				 ARG.RDB$FUNCTION_NAME EQ name.object.c_str() AND
 				 ARG.RDB$PACKAGE_NAME EQUIV NULLIF(name.package.c_str(), '') AND
+				 ARG.RDB$FIELD_SOURCE_SCHEMA_NAME EQUIV FLD.RDB$SCHEMA_NAME AND
 				 ARG.RDB$FIELD_SOURCE EQ FLD.RDB$FIELD_NAME
 			SORTED BY ARG.RDB$ARGUMENT_POSITION
 		{
@@ -4454,14 +4466,12 @@ static processing_state show_func_legacy(const QualifiedMetaString& name)
 			 FUN.RDB$MODULE_NAME NOT MISSING
 		SORTED BY FNA.RDB$ARGUMENT_POSITION
 	{
-		const QualifiedMetaString functionName(FUN.RDB$FUNCTION_NAME, FUN.RDB$SCHEMA_NAME);
-
 		fb_utils::exact_name(FUN.RDB$MODULE_NAME);
 		fb_utils::exact_name(FUN.RDB$ENTRYPOINT);
 
 		if (first)
 		{
-			isqlGlob.printf("%sExternal function %s:%s", NEWLINE, IUTILS_name_to_string(functionName).c_str(), NEWLINE);
+			isqlGlob.printf("%sExternal function %s:%s", NEWLINE, IUTILS_name_to_string(name).c_str(), NEWLINE);
 			isqlGlob.printf("Function library is %s%s", FUN.RDB$MODULE_NAME, NEWLINE);
 			isqlGlob.printf("Entry point is %s%s", FUN.RDB$ENTRYPOINT, NEWLINE);
 		}
@@ -4529,18 +4539,18 @@ static processing_state show_func_legacy(const QualifiedMetaString& name)
 		if (FNA.RDB$FIELD_TYPE == blr_text || FNA.RDB$FIELD_TYPE == blr_varying ||
 			FNA.RDB$FIELD_TYPE == blr_cstring)
 		{
-			FOR V4FNA IN RDB$FUNCTION_ARGUMENTS CROSS
-				CHARSET IN RDB$CHARACTER_SETS OVER RDB$CHARACTER_SET_ID
-				WITH V4FNA.RDB$SCHEMA_NAME EQUIV NULLIF(name.schema.c_str(), '') AND
-					 V4FNA.RDB$FUNCTION_NAME EQ name.object.c_str() AND
-					 V4FNA.RDB$PACKAGE_NAME MISSING AND
-					 V4FNA.RDB$ARGUMENT_POSITION EQ FNA.RDB$ARGUMENT_POSITION
+			FOR ARG IN RDB$FUNCTION_ARGUMENTS CROSS
+				CS IN RDB$CHARACTER_SETS OVER RDB$CHARACTER_SET_ID
+				WITH ARG.RDB$SCHEMA_NAME EQUIV NULLIF(name.schema.c_str(), '') AND
+					 ARG.RDB$FUNCTION_NAME EQ name.object.c_str() AND
+					 ARG.RDB$PACKAGE_NAME MISSING AND
+					 ARG.RDB$ARGUMENT_POSITION EQ FNA.RDB$ARGUMENT_POSITION
 			{
-				const QualifiedMetaString charSetName(CHARSET.RDB$CHARACTER_SET_NAME, CHARSET.RDB$SCHEMA_NAME);
+				const QualifiedMetaString charSetName(CS.RDB$CHARACTER_SET_NAME, CS.RDB$SCHEMA_NAME);
 
 				isqlGlob.printf(
 					"(%d) CHARACTER SET %s",
-					(FNA.RDB$FIELD_LENGTH / MAX (1, CHARSET.RDB$BYTES_PER_CHARACTER)),
+					(FNA.RDB$FIELD_LENGTH / MAX (1, CS.RDB$BYTES_PER_CHARACTER)),
 					IUTILS_name_to_string(charSetName).c_str());
 			}
 			END_FOR
@@ -5203,6 +5213,7 @@ static processing_state show_proc(const std::optional<QualifiedMetaString>& name
 			WITH PRM.RDB$SCHEMA_NAME EQUIV NULLIF(procedureName.schema.c_str(), '') AND
 				 PRM.RDB$PACKAGE_NAME EQUIV NULLIF(procedureName.package.c_str(), '') AND
 				 PRM.RDB$PROCEDURE_NAME EQ procedureName.object.c_str() AND
+				 PRM.RDB$FIELD_SOURCE_SCHEMA_NAME EQUIV FLD.RDB$SCHEMA_NAME AND
 				 PRM.RDB$FIELD_SOURCE EQ FLD.RDB$FIELD_NAME
 			SORTED BY PRM.RDB$PARAMETER_TYPE, PRM.RDB$PARAMETER_NUMBER
 		{
