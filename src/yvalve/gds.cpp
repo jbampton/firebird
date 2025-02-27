@@ -311,7 +311,6 @@ const int op_parameters	= 15;
 const int op_error_handler	= 16;
 const int op_set_error	= 17;
 const int op_literals	= 18;
-const int op_relation	= 20;
 const int op_exec_into	= 21;
 const int op_cursor_stmt	= 22;
 const int op_byte_opt_verb	= 23;
@@ -975,7 +974,7 @@ static SLONG safe_interpret(char* const s, const FB_SIZE_T bufsize,
 				}
 
 				if (!found) {
-					sprintf(s, "unknown ISC error %ld", (SLONG) code);	// TXNN
+					sprintf(s, "unknown ISC error %" SLONGFORMAT, (SLONG) code);	// TXNN
 				}
 			}
 		}
@@ -1000,11 +999,11 @@ static SLONG safe_interpret(char* const s, const FB_SIZE_T bufsize,
 		break;
 
 	case isc_arg_dos:
-		sprintf(s, "unknown dos error %ld", (SLONG) code);	// TXNN
+		sprintf(s, "unknown dos error %" SLONGFORMAT, (SLONG) code);	// TXNN
 		break;
 
 	case isc_arg_next_mach:
-		sprintf(s, "next/mach error %ld", (SLONG) code);	// AP
+		sprintf(s, "next/mach error %" SLONGFORMAT, (SLONG) code);	// AP
 		break;
 
 	case isc_arg_win32:
@@ -1016,7 +1015,7 @@ static SLONG safe_interpret(char* const s, const FB_SIZE_T bufsize,
 						   s, bufsize, NULL))
 #endif
 		{
-			sprintf(s, "unknown Win32 error %ld", (SLONG) code);	// TXNN
+			sprintf(s, "unknown Win32 error %" SLONGFORMAT, (SLONG) code);	// TXNN
 		}
 		break;
 
@@ -3530,27 +3529,6 @@ static void blr_print_verb(gds_ctl* control, SSHORT level)
 			}
 			break;
 
-		case op_relation:
-			blr_operator = control->ctl_blr_reader.getByte();
-			blr_print_blr(control, blr_operator);
-			// Strange message. Notice that blr_lock_relation was part of PC_ENGINE.
-			if (blr_operator != blr_relation && blr_operator != blr_rid)
-			{
-				blr_error(control,
-						  "*** blr_relation or blr_rid must be object of blr_lock_relation, %d found ***",
-						  (int) blr_operator);
-			}
-
-			if (blr_operator == blr_relation)
-			{
-				n = blr_print_byte(control);
-				while (--n >= 0)
-					blr_print_char(control);
-			}
-			else
-				blr_print_word(control);
-			break;
-
 		case op_exec_into:
 			blr_print_verb(control, level);
 			if (! blr_print_byte(control)) {
@@ -4025,7 +4003,7 @@ static void blr_print_verb(gds_ctl* control, SSHORT level)
 					case blr_invoke_function_type:
 						n = control->ctl_blr_reader.getByte();
 
-						if (n == 0 || n >= FB_NELEM(typeSubCodes))
+						if (n == 0 || n >= static_cast<FB_SSIZE_T>(FB_NELEM(typeSubCodes)))
 							blr_error(control, "*** invalid blr_invoke_function_type sub code ***");
 
 						blr_format(control, "blr_invoke_function_type_%s,", typeSubCodes[n]);
@@ -4123,7 +4101,7 @@ static void blr_print_verb(gds_ctl* control, SSHORT level)
 					case blr_invsel_procedure_type:
 						n = control->ctl_blr_reader.getByte();
 
-						if (n == 0 || n >= FB_NELEM(typeSubCodes))
+						if (n == 0 || n >= static_cast<FB_SSIZE_T>(FB_NELEM(typeSubCodes)))
 							blr_error(control, "*** invalid blr_invsel_procedure_type sub code ***");
 
 						blr_format(control, "blr_invsel_procedure_type_%s,", typeSubCodes[n]);

@@ -55,12 +55,10 @@ NestedLoopJoin::NestedLoopJoin(CompilerScratch* csb,
 }
 
 NestedLoopJoin::NestedLoopJoin(CompilerScratch* csb,
-							   RecordSource* outer,
-							   RecordSource* inner,
-							   BoolExprNode* boolean,
-							   JoinType joinType)
+							   RecordSource* outer, RecordSource* inner,
+							   BoolExprNode* boolean)
 	: RecordSource(csb),
-	  m_joinType(joinType),
+	  m_joinType(OUTER_JOIN),
 	  m_boolean(boolean),
 	  m_args(csb->csb_pool, 2)
 {

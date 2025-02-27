@@ -107,9 +107,9 @@ bool FullOuterJoin::internalGetRecord(thread_db* tdbb) const
 	{
 		bool matched = false;
 
-		for (const auto i : m_checkStreams)
+		for (const auto stream : m_checkStreams)
 		{
-			if (request->req_rpb[i].rpb_number.isValid())
+			if (request->req_rpb[stream].rpb_number.isValid())
 			{
 				matched = true;
 				break;

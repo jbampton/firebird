@@ -76,7 +76,7 @@ public:
 	jrd_rel* blb_relation;			// Relation, if known
 	JBlob* blb_interface;
 
-	ULONG blb_length;				// Total length of data sans segments
+	FB_UINT64 blb_length;			// Blob's total length (in bytes)
 	USHORT blb_flags;				// Interesting stuff (see below)
 
 	SSHORT blb_sub_type;			// Blob's declared sub-type
@@ -181,6 +181,7 @@ const int BLB_seek			= 32;		// Seek is pending
 const int BLB_large_scan	= 64;		// Blob is larger than page buffer cache
 const int BLB_close_on_read = 128;		// Temporary blob is not closed until read
 const int BLB_bulk			= 256;		// Blob created by bulk insert operation
+const int BLB_user			= 512;		// User-defined blob
 
 /* Blob levels are:
 

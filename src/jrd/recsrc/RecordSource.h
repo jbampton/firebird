@@ -798,6 +798,11 @@ namespace Jrd
 			return savedPosition;
 		}
 
+		SINT64 getInFrameOffset() const
+		{
+			return savedPosition - frameStart;
+		}
+
 		void restore()
 		{
 			if (!moved)
@@ -1138,7 +1143,7 @@ namespace Jrd
 		NestedLoopJoin(CompilerScratch* csb, FB_SIZE_T count, RecordSource* const* args,
 					   JoinType joinType = INNER_JOIN);
 		NestedLoopJoin(CompilerScratch* csb, RecordSource* outer, RecordSource* inner,
-					   BoolExprNode* boolean, JoinType joinType = OUTER_JOIN);
+					   BoolExprNode* boolean);
 
 		void close(thread_db* tdbb) const override;
 

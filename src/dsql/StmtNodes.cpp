@@ -8907,8 +8907,7 @@ const StmtNode* StoreNode::store(thread_db* tdbb, Request* request, WhichTrigger
 
 				rpb->rpb_number.setValid(true);
 
-				if (relation && (relation->rel_post_store || relation->isSystem()) &&
-					relation->rel_post_store && whichTrig != PRE_TRIG)
+				if (relation && (relation->rel_post_store || relation->isSystem()) && whichTrig != PRE_TRIG)
 				{
 					EXE_execute_triggers(tdbb, &relation->rel_post_store, NULL, rpb,
 						TRIGGER_INSERT, POST_TRIG);
@@ -9719,6 +9718,9 @@ SetTransactionNode* SetTransactionNode::dsqlPass(DsqlCompilerScratch* dsqlScratc
 
 	if (autoCommit.isAssigned())
 		dsqlScratch->appendUChar(isc_tpb_autocommit);
+
+	if (autoReleaseTempBlobID.isAssigned())
+		dsqlScratch->appendUChar(isc_tpb_auto_release_temp_blobid);
 
 	if (lockTimeout.has_value())
 	{

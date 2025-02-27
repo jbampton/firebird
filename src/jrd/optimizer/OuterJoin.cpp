@@ -94,15 +94,25 @@ OuterJoin::OuterJoin(thread_db* aTdbb, Optimizer* opt,
 
 RecordSource* OuterJoin::generate()
 {
-	const auto outerJoinRsb = process();
-
 	if (!optimizer->isFullJoin())
-		return outerJoinRsb;
+	{
+		fb_assert(optimizer->isLeftJoin());
+		return process();
+	}
 
-	// A FULL JOIN B is currently implemented similar to (A LEFT JOIN B) UNION ALL (B ANTI-JOIN A).
+	StreamList outerStreams;
+	const auto outerJoinRsb = process(&outerStreams);
+
+	// A FULL JOIN B is currently implemented similar to:
+	//
+	// (A LEFT JOIN B)
+	// UNION ALL
+	// (B LEFT JOIN A WHERE A.* IS NULL)
+	//
+	// See also FullOuterJoin class implementation.
 	//
 	// At this point we already have the first part -- (A LEFT JOIN B) -- ready,
-	// so just swap the sides and make an anti-join.
+	// so just swap the sides and make the second (inverted) join.
 
 	auto& outerStream = joinStreams[0];
 	auto& innerStream = joinStreams[1];
@@ -136,13 +146,15 @@ RecordSource* OuterJoin::generate()
 			iter.reset(CMP_clone_node_opt(tdbb, csb, iter));
 	}
 
+	const auto antiJoinRsb = process();
+
 	// Allocate and return the final join record source
 
-	return FB_NEW_POOL(getPool()) FullOuterJoin(csb, outerJoinRsb, process(), checkStreams);
+	return FB_NEW_POOL(getPool()) FullOuterJoin(csb, outerJoinRsb, antiJoinRsb, outerStreams);
 }
 
 
-RecordSource* OuterJoin::process()
+RecordSource* OuterJoin::process(StreamList* outerStreams)
 {
 	BoolExprNode* boolean = nullptr;
 
@@ -156,8 +168,7 @@ RecordSource* OuterJoin::process()
 	{
 		fb_assert(!outerStream.rsb);
 		outerStream.rsb = optimizer->generateRetrieval(outerStream.number,
-			optimizer->isFullJoin() ? nullptr : sortPtr,
-			true, false, &boolean);
+			optimizer->isFullJoin() ? nullptr : sortPtr, true, false, &boolean);
 	}
 	else
 	{
@@ -175,6 +186,9 @@ RecordSource* OuterJoin::process()
 
 		boolean = optimizer->composeBoolean();
 	}
+
+	if (outerStreams)
+		outerStream.rsb->findUsedStreams(*outerStreams);
 
 	if (innerStream.number != INVALID_STREAM)
 	{
