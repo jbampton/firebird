@@ -120,7 +120,7 @@ static void raiseError(thread_db* tdbb, SecurityClass::flags_t mask, ObjectType 
 
 	const char* const ddlObjectName = getDdlObjectName(type);
 	const Firebird::string fullName = col_name.hasData() ?
-		name.toQuotedString() + "." + col_name.c_str() : name.toQuotedString();
+		name.toQuotedString() + "." + col_name.toQuotedString() : name.toQuotedString();
 
 	Arg::StatusVector status;
 	status << Arg::Gds(isc_no_priv) << Arg::Str(names->p_names_string) <<
@@ -475,8 +475,8 @@ void SCL_check_index(thread_db* tdbb, const QualifiedName& index_name, UCHAR ind
         return;
     }
 
-    QualifiedName reln_name, aux_idx_name;
-    auto idx_name_ptr = &index_name;
+	QualifiedName reln_name, aux_idx_name;
+	auto idx_name_ptr = &index_name;
 	const auto relation_name_ptr = &index_name;
 
 	AutoRequest request;
@@ -553,6 +553,7 @@ void SCL_check_index(thread_db* tdbb, const QualifiedName& index_name, UCHAR ind
 		CROSS RF IN RDB$RELATION_FIELDS OVER RDB$SCHEMA_NAME, RDB$FIELD_NAME
 		WITH RF.RDB$SCHEMA_NAME EQ reln_name.schema.c_str() AND
 			 RF.RDB$RELATION_NAME EQ reln_name.object.c_str() AND
+			 ISEG.RDB$SCHEMA_NAME EQ idx_name_ptr->schema.c_str() AND
 			 ISEG.RDB$INDEX_NAME EQ idx_name_ptr->object.c_str()
 	{
 		s_class = (!RF.RDB$SECURITY_CLASS.NULL) ?

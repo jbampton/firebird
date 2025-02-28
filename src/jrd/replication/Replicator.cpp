@@ -426,11 +426,11 @@ void Replicator::deleteRecord(CheckStatusWrapper* status,
 	}
 }
 
-void Replicator::executeSqlIntl2(CheckStatusWrapper* status,
-								 Transaction* transaction,
-								 unsigned charset,
-								 const char* schemaSearchPath,
-								 const char* sql)
+void Replicator::executeSqlIntl(CheckStatusWrapper* status,
+								Transaction* transaction,
+								unsigned charset,
+								const char* schemaSearchPath,
+								const char* sql)
 {
 	try
 	{

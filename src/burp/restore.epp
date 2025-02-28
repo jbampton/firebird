@@ -12340,7 +12340,7 @@ void fix_plugins_schemas(BurpGlobals* tdgbl)
 				               (select sql_text
 				                   from plg$profiler.plg$prof_statements
 				                   where profile_id = req.profile_id and
-				                           statement_id = coalesce(sta.parent_statement_id, req.statement_id)
+				                         statement_id = coalesce(sta.parent_statement_id, req.statement_id)
 				               ) sql_text,
 				               count(*) counter,
 				               min(req.total_elapsed_time) min_elapsed_time,
@@ -12383,7 +12383,7 @@ void fix_plugins_schemas(BurpGlobals* tdgbl)
 				               (select sql_text
 				                   from plg$profiler.plg$prof_statements
 				                   where profile_id = pstat.profile_id and
-				                           statement_id = coalesce(sta.parent_statement_id, pstat.statement_id)
+				                         statement_id = coalesce(sta.parent_statement_id, pstat.statement_id)
 				               ) sql_text,
 				               pstat.line_num,
 				               pstat.column_num,
@@ -12430,7 +12430,7 @@ void fix_plugins_schemas(BurpGlobals* tdgbl)
 				               (select sql_text
 				                   from plg$profiler.plg$prof_statements
 				                   where profile_id = rstat.profile_id and
-				                           statement_id = coalesce(sta.parent_statement_id, rstat.statement_id)
+				                         statement_id = coalesce(sta.parent_statement_id, rstat.statement_id)
 				               ) sql_text,
 				               rstat.cursor_id,
 				               cur.name cursor_name,

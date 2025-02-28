@@ -242,13 +242,13 @@ namespace Replication
 			void deprecatedExecuteSqlIntl(Firebird::CheckStatusWrapper* status, unsigned charset,
 				const char* sql) override
 			{
-				m_replicator->executeSqlIntl(status, this, charset, sql);
+				executeSqlIntl2(status, charset, "", sql);
 			}
 
 			void executeSqlIntl2(Firebird::CheckStatusWrapper* status, unsigned charset, const char* schemaSearchPath,
 				const char* sql) override
 			{
-				m_replicator->executeSqlIntl2(status, this, charset, schemaSearchPath, sql);
+				m_replicator->executeSqlIntl(status, this, charset, schemaSearchPath, sql);
 			}
 
 		private:
@@ -334,20 +334,13 @@ namespace Replication
 		void executeSql(Firebird::CheckStatusWrapper* status, Transaction* transaction,
 						const char* sql)
 		{
-			executeSqlIntl2(status, transaction, CS_UTF8, "", sql);
+			executeSqlIntl(status, transaction, CS_UTF8, "", sql);
 		}
 
 		void executeSqlIntl(Firebird::CheckStatusWrapper* status, Transaction* transaction,
 							unsigned charset,
-							const char* sql)
-		{
-			executeSqlIntl2(status, transaction, charset, "", sql);
-		}
-
-		void executeSqlIntl2(Firebird::CheckStatusWrapper* status, Transaction* transaction,
-							 unsigned charset,
-							 const char* schemaSearchPath,
-							 const char* sql);
+							const char* schemaSearchPath,
+							const char* sql);
 };
 
 } // namespace

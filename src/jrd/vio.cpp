@@ -3512,10 +3512,7 @@ bool VIO_modify(thread_db* tdbb, record_param* org_rpb, record_param* new_rpb, j
 			else
 			{
 				if (object_name.package.hasData())
-				{
-					QualifiedName package(object_name.package, object_name.schema);
-					SCL_check_package(tdbb, package, SCL_alter);
-				}
+					SCL_check_package(tdbb, object_name.getSchemaAndPackage(), SCL_alter);
 				else
 				{
 					MOV_get_metaname(tdbb, &schemaDesc, object_name.schema);
@@ -3548,7 +3545,7 @@ bool VIO_modify(thread_db* tdbb, record_param* org_rpb, record_param* new_rpb, j
 			{
 				if (object_name.package.hasData())
 				{
-					QualifiedName package(object_name.package, object_name.schema);
+					const auto package = object_name.getSchemaAndPackage();
 					SCL_check_package(tdbb, package, SCL_alter);
 					SCL_check_package(tdbb, package, SCL_alter);
 				}

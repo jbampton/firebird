@@ -687,7 +687,7 @@ void REPL_exec_sql(thread_db* tdbb, jrd_tra* transaction, const string& sql,
 			schemaSearchPath.end(),
 			schemaSearchPath[0].toQuotedString(),
 			[](const auto& a, const auto& b) {
-				return a + " " + b.toQuotedString();
+				return a + ", " + b.toQuotedString();
 			}
 		);
 	}

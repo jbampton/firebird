@@ -438,7 +438,7 @@ public:
 			return;
 
 		m_name = trigger->name.toQuotedString();
-		m_relationName = trigger->relation ? trigger->relation->rel_name.toQuotedString().c_str() : "";
+		m_relationName = trigger->relation ? trigger->relation->rel_name.toQuotedString() : "";
 
 		const auto type = (trigger->type & ~TRIGGER_TYPE_MASK);
 

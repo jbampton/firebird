@@ -598,8 +598,7 @@ static void get_user_privs(thread_db*					tdbb,
 			   PRV.RDB$GRANT_OPTION EQ WITH_ADMIN_OPTION))
 		SORTED BY PRV.RDB$USER, PRV.RDB$USER_SCHEMA_NAME, PRV.RDB$USER_TYPE
 	{
-		const QualifiedName thisUser(PRV.RDB$USER,
-			(PRV.RDB$USER_SCHEMA_NAME.NULL ? "" : PRV.RDB$USER_SCHEMA_NAME));
+		const QualifiedName thisUser(PRV.RDB$USER, PRV.RDB$USER_SCHEMA_NAME);
 
 		if (user != thisUser || user_type != PRV.RDB$USER_TYPE)
 		{
@@ -765,8 +764,7 @@ static SecurityClass::flags_t save_field_privileges(thread_db* tdbb,
 			 (PRV.RDB$USER NE owner.c_str() OR PRV.RDB$USER_TYPE NE obj_user)
 		SORTED BY PRV.RDB$FIELD_NAME, PRV.RDB$USER, PRV.RDB$USER_SCHEMA_NAME
 	{
-		const QualifiedName thisUser(PRV.RDB$USER,
-			(PRV.RDB$USER_SCHEMA_NAME.NULL ? "" : PRV.RDB$USER_SCHEMA_NAME));
+		const QualifiedName thisUser(PRV.RDB$USER, PRV.RDB$USER_SCHEMA_NAME);
 
 		// create a control break on field_name,user
 

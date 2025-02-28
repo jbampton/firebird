@@ -4151,7 +4151,9 @@ void jrd_tra::checkBlob(thread_db* tdbb, const bid* blob_id, jrd_fld* fld, bool 
 				{
 					ERR_post(Arg::Gds(isc_no_priv) << Arg::Str("SELECT") <<
 						(fld ? Arg::Str("COLUMN") : Arg::Str("TABLE")) <<
-						(Arg::Str(fld ? fld->fld_name.c_str() : blb_relation->rel_name.toQuotedString().c_str())));
+						(Arg::Str(fld ?
+							fld->fld_name.toQuotedString().c_str() :
+							blb_relation->rel_name.toQuotedString().c_str())));
 				}
 				else
 					tra_fetched_blobs.add(*blob_id);

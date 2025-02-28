@@ -92,7 +92,7 @@ inline Jrd::MetaName SCL_getDdlSecurityClassName(ObjectType objectType, const Jr
 		case obj_schemas:
 		{
 			Firebird::string str;
-			str.printf(SQL_DDL_SECCLASS_FORMAT, objectType, schema.c_str());
+			str.printf(SQL_DDL_SECCLASS_FORMAT, (int) objectType, schema.c_str());
 			return str;
 		}
 

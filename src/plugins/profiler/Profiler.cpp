@@ -261,8 +261,6 @@ public:
 private:
 	void createInitialMetadata(ThrowStatusExceptionWrapper* status, RefPtr<IAttachment> attachment,
 		RefPtr<ITransaction> transaction);
-	void upgradeMetadataWithSchemaName(ThrowStatusExceptionWrapper* status, RefPtr<IAttachment> attachment,
-		RefPtr<ITransaction> transaction);
 	void recreateViews(ThrowStatusExceptionWrapper* status, RefPtr<IAttachment> attachment,
 		RefPtr<ITransaction> transaction);
 
@@ -283,16 +281,11 @@ void ProfilerPlugin::init(ThrowStatusExceptionWrapper* status, IAttachment* atta
 	constexpr auto sql = R"""(
 		select exists(
 		           select true
-		               from system.rdb$roles
-		               where rdb$role_name = 'PLG$PROFILER'
-		       ) metadata_created,
-		       exists(
-		           select true
 		               from system.rdb$relation_fields
 		               where rdb$schema_name = 'PLG$PROFILER' and
 		                     rdb$relation_name = 'PLG$PROF_STATEMENTS' and
 		                     rdb$field_name = 'SCHEMA_NAME'
-		       ) has_schema_name,
+		       ) metadata_created,
 		       rdb$get_context('SYSTEM', 'DB_NAME') db_name,
 		       (select rdb$owner_name
 		            from system.rdb$relations
@@ -306,7 +299,6 @@ void ProfilerPlugin::init(ThrowStatusExceptionWrapper* status, IAttachment* atta
 
 	FB_MESSAGE(message, ThrowStatusExceptionWrapper,
 		(FB_BOOLEAN, metadataCreated)
-		(FB_BOOLEAN, hasSchemaName)
 		(FB_INTL_VARCHAR(MAXPATHLEN * 4, CS_METADATA), dbName)
 		(FB_INTL_VARCHAR(MAX_SQL_IDENTIFIER_LEN, CS_METADATA), ownerName)
 		(FB_INTL_VARCHAR(MAX_SQL_IDENTIFIER_LEN, CS_METADATA), currentRole)
@@ -339,7 +331,7 @@ void ProfilerPlugin::init(ThrowStatusExceptionWrapper* status, IAttachment* atta
 
 			roleInUse = message->roleInUse;
 
-			if (message->metadataCreated && message->hasSchemaName)
+			if (message->metadataCreated)
 				break;
 
 			auto dispatcher = makeNoIncRef(MasterInterfacePtr()->getDispatcher());
@@ -362,8 +354,6 @@ void ProfilerPlugin::init(ThrowStatusExceptionWrapper* status, IAttachment* atta
 
 	if (!message->metadataCreated)
 		createInitialMetadata(status, refAttachment, refTransaction);
-	else if (!message->hasSchemaName)
-		upgradeMetadataWithSchemaName(status, refAttachment, refTransaction);
 
 	if (!roleInUse)
 	{
@@ -1222,33 +1212,6 @@ void ProfilerPlugin::createInitialMetadata(ThrowStatusExceptionWrapper* status, 
 	for (const auto createSql : createSqlStaments)
 	{
 		attachment->execute(status, transaction, 0, createSql, SQL_DIALECT_CURRENT,
-			nullptr, nullptr, nullptr, nullptr);
-	}
-
-	recreateViews(status, attachment, transaction);
-
-	transaction->commit(status);
-	transaction.clear();
-}
-
-void ProfilerPlugin::upgradeMetadataWithSchemaName(ThrowStatusExceptionWrapper* status, RefPtr<IAttachment> attachment,
-	RefPtr<ITransaction> transaction)
-{
-	constexpr const char* sqlStaments[] = {
-		R"""(
-		alter table plg$profiler.plg$prof_statements
-		    add schema_name char(63) character set utf8
-		)""",
-
-		R"""(
-		alter table plg$profiler.plg$prof_statements
-		    alter schema_name position 5
-		)"""
-	};
-
-	for (const auto sqlStatement : sqlStaments)
-	{
-		attachment->execute(status, transaction, 0, sqlStatement, SQL_DIALECT_CURRENT,
 			nullptr, nullptr, nullptr, nullptr);
 	}
 

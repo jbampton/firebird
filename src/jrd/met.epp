@@ -316,7 +316,7 @@ MetaName MET_get_relation_field(thread_db* tdbb, MemoryPool& csbPool, const Qual
 	if (!found)
 	{
 		ERR_post(Arg::Gds(isc_dyn_column_does_not_exist) <<
-			Arg::Str(fieldName) <<
+			fieldName.toQuotedString() <<
 			relationName.toQuotedString());
 	}
 
@@ -981,8 +981,7 @@ DeferredWork* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const dsc
 	SET_TDBB(tdbb);
 	Attachment* attachment = tdbb->getAttachment();
 
-	dsc schemaNameDsc;
-	dsc nameDesc;
+	dsc schemaDesc, nameDesc;
 	DeferredWork* dw = NULL;
 	AutoCacheRequest request(tdbb, irq_m_fields, IRQ_REQUESTS);
 
@@ -992,9 +991,9 @@ DeferredWork* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const dsc
 			 X.RDB$FIELD_SOURCE EQ field_source->dsc_address
 	{
 		SCL_check_relation(tdbb, QualifiedName(X.RDB$RELATION_NAME, X.RDB$SCHEMA_NAME), SCL_alter);
-		schemaNameDsc.makeText(sizeof(X.RDB$SCHEMA_NAME) - 1, CS_METADATA, (UCHAR*) X.RDB$SCHEMA_NAME);
+		schemaDesc.makeText(sizeof(X.RDB$SCHEMA_NAME) - 1, CS_METADATA, (UCHAR*) X.RDB$SCHEMA_NAME);
 		nameDesc.makeText(sizeof(X.RDB$RELATION_NAME) - 1, CS_METADATA, (UCHAR*) X.RDB$RELATION_NAME);
-		dw = DFW_post_work(transaction, dfw_update_format, &nameDesc, &schemaNameDsc, 0);
+		dw = DFW_post_work(transaction, dfw_update_format, &nameDesc, &schemaDesc, 0);
 
 		AutoCacheRequest request2(tdbb, irq_m_fields4, IRQ_REQUESTS);
 
@@ -1012,7 +1011,6 @@ DeferredWork* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const dsc
 		{
 			QualifiedName procName(PRC.RDB$PROCEDURE_NAME, PRC.RDB$SCHEMA_NAME);
 
-			dsc schemaDesc, nameDesc;
 			schemaDesc.makeText(procName.schema.length(), CS_METADATA, (UCHAR*) procName.schema.c_str());
 			nameDesc.makeText(procName.object.length(), CS_METADATA, (UCHAR*) procName.object.c_str());
 
@@ -1038,7 +1036,6 @@ DeferredWork* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const dsc
 			QualifiedName triggerName(TRG.RDB$TRIGGER_NAME, TRG.RDB$SCHEMA_NAME);
 			MetaName triggerRelationName(TRG.RDB$RELATION_NAME);
 
-			dsc schemaDesc, nameDesc;
 			schemaDesc.makeText(triggerName.schema.length(), CS_METADATA, (UCHAR*) triggerName.schema.c_str());
 			nameDesc.makeText(triggerName.object.length(), CS_METADATA, (UCHAR*) triggerName.object.c_str());
 
@@ -1067,7 +1064,6 @@ DeferredWork* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const dsc
 		{
 			QualifiedName funcName(FUN.RDB$FUNCTION_NAME, FUN.RDB$SCHEMA_NAME);
 
-			dsc schemaDesc, nameDesc;
 			schemaDesc.makeText(funcName.schema.length(), CS_METADATA, (UCHAR*) funcName.schema.c_str());
 			nameDesc.makeText(funcName.object.length(), CS_METADATA, (UCHAR*) funcName.object.c_str());
 
@@ -1094,7 +1090,6 @@ DeferredWork* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const dsc
 	{
 		QualifiedName procName(PRC.RDB$PROCEDURE_NAME, PRC.RDB$SCHEMA_NAME);
 
-		dsc schemaDesc, nameDesc;
 		schemaDesc.makeText(procName.schema.length(), CS_METADATA, (UCHAR*) procName.schema.c_str());
 		nameDesc.makeText(procName.object.length(), CS_METADATA, (UCHAR*) procName.object.c_str());
 
@@ -1114,11 +1109,11 @@ DeferredWork* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const dsc
 			 DEP.RDB$DEPENDED_ON_TYPE EQ obj_field AND
 			 (DEP.RDB$DEPENDENT_TYPE EQ obj_package_header OR
 			 	DEP.RDB$DEPENDENT_TYPE EQ obj_package_body) AND
+			 DEP.RDB$DEPENDENT_SCHEMA_NAME EQ PRC.RDB$SCHEMA_NAME AND
 			 DEP.RDB$DEPENDENT_NAME EQ PRC.RDB$PACKAGE_NAME
 	{
 		QualifiedName procName(PRC.RDB$PROCEDURE_NAME, PRC.RDB$SCHEMA_NAME);
 
-		dsc schemaDesc, nameDesc;
 		schemaDesc.makeText(procName.schema.length(), CS_METADATA, (UCHAR*) procName.schema.c_str());
 		nameDesc.makeText(procName.object.length(), CS_METADATA, (UCHAR*) procName.object.c_str());
 
@@ -1137,12 +1132,12 @@ DeferredWork* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const dsc
 			 DEP.RDB$DEPENDED_ON_NAME EQ field_source->dsc_address AND
 			 DEP.RDB$DEPENDED_ON_TYPE EQ obj_field AND
 			 DEP.RDB$DEPENDENT_TYPE EQ obj_trigger AND
+			 DEP.RDB$DEPENDENT_SCHEMA_NAME EQ TRG.RDB$SCHEMA_NAME AND
 			 DEP.RDB$DEPENDENT_NAME EQ TRG.RDB$TRIGGER_NAME
 	{
 		QualifiedName triggerName(TRG.RDB$TRIGGER_NAME, TRG.RDB$SCHEMA_NAME);
 		MetaName triggerRelationName(TRG.RDB$RELATION_NAME);
 
-		dsc schemaDesc, nameDesc;
 		schemaDesc.makeText(triggerName.schema.length(), CS_METADATA, (UCHAR*) triggerName.schema.c_str());
 		nameDesc.makeText(triggerName.object.length(), CS_METADATA, (UCHAR*) triggerName.object.c_str());
 
@@ -1164,12 +1159,12 @@ DeferredWork* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const dsc
 			 DEP.RDB$DEPENDED_ON_NAME EQ field_source->dsc_address AND
 			 DEP.RDB$DEPENDED_ON_TYPE EQ obj_field AND
 			 DEP.RDB$DEPENDENT_TYPE EQ obj_udf AND
+			 DEP.RDB$DEPENDENT_SCHEMA_NAME EQ FUN.RDB$SCHEMA_NAME AND
 			 DEP.RDB$DEPENDENT_NAME EQ FUN.RDB$FUNCTION_NAME AND
 			 FUN.RDB$PACKAGE_NAME MISSING
 	{
 		QualifiedName funcName(FUN.RDB$FUNCTION_NAME, FUN.RDB$SCHEMA_NAME);
 
-		dsc schemaDesc, nameDesc;
 		schemaDesc.makeText(funcName.schema.length(), CS_METADATA, (UCHAR*) funcName.schema.c_str());
 		nameDesc.makeText(funcName.object.length(), CS_METADATA, (UCHAR*) funcName.object.c_str());
 
@@ -1189,11 +1184,11 @@ DeferredWork* MET_change_fields(thread_db* tdbb, jrd_tra* transaction, const dsc
 			 DEP.RDB$DEPENDED_ON_TYPE EQ obj_field AND
 			 (DEP.RDB$DEPENDENT_TYPE EQ obj_package_header OR
 			 	DEP.RDB$DEPENDENT_TYPE EQ obj_package_body) AND
+			 DEP.RDB$DEPENDENT_SCHEMA_NAME EQ FUN.RDB$SCHEMA_NAME AND
 			 DEP.RDB$DEPENDENT_NAME EQ FUN.RDB$PACKAGE_NAME
 	{
 		QualifiedName funcName(FUN.RDB$FUNCTION_NAME, FUN.RDB$SCHEMA_NAME);
 
-		dsc schemaDesc, nameDesc;
 		schemaDesc.makeText(funcName.schema.length(), CS_METADATA, (UCHAR*) funcName.schema.c_str());
 		nameDesc.makeText(funcName.object.length(), CS_METADATA, (UCHAR*) funcName.object.c_str());
 
@@ -3375,11 +3370,7 @@ jrd_prc* MET_procedure(thread_db* tdbb, USHORT id, bool noscan, USHORT flags)
 				 SCH.RDB$SCHEMA_NAME EQ P.RDB$SCHEMA_NAME
 		{
 			if (procedure->getName().toQuotedString().length() == 0)
-			{
-				procedure->setName(QualifiedName(P.RDB$PROCEDURE_NAME,
-					(P.RDB$SCHEMA_NAME.NULL ? "" : P.RDB$SCHEMA_NAME),
-					(P.RDB$PACKAGE_NAME.NULL ? "" : P.RDB$PACKAGE_NAME)));
-			}
+				procedure->setName(QualifiedName(P.RDB$PROCEDURE_NAME, P.RDB$SCHEMA_NAME, P.RDB$PACKAGE_NAME));
 
 			procedure->setId(P.RDB$PROCEDURE_ID);
 			TriState ssDefiner;

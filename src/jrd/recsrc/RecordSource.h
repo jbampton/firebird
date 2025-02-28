@@ -178,7 +178,7 @@ namespace Jrd
 		RecordSource(CompilerScratch* csb);
 
 		static Firebird::string printName(thread_db* tdbb, const Firebird::string& name,
-										  const Firebird::string& alias = "");
+										  const Firebird::string& alias = {});
 
 		static void printInversion(thread_db* tdbb, const InversionNode* inversion,
 								   Firebird::ObjectsArray<PlanEntry::Line>& planLines,
