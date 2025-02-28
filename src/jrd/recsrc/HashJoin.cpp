@@ -596,7 +596,7 @@ void HashJoin::internalGetPlan(thread_db* tdbb, PlanEntry& planEntry, unsigned l
 	extras.printf(" (keys: %" ULONGFORMAT", total key length: %" ULONGFORMAT")",
 				  m_leader.keys->getCount(), m_leader.totalKeyLength);
 
-	planEntry.lines.add().text += extras;
+	planEntry.lines.back().text += extras;
 
 	printOptInfo(planEntry.lines);
 
@@ -615,32 +615,46 @@ void HashJoin::markRecursive()
 {
 	m_leader.source->markRecursive();
 
-	for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-		m_args[i].source->markRecursive();
+	for (const auto& arg : m_args)
+		arg.source->markRecursive();
 }
 
 void HashJoin::findUsedStreams(StreamList& streams, bool expandAll) const
 {
 	m_leader.source->findUsedStreams(streams, expandAll);
 
-	for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-		m_args[i].source->findUsedStreams(streams, expandAll);
+	for (const auto& arg : m_args)
+		arg.source->findUsedStreams(streams, expandAll);
+}
+
+bool HashJoin::isDependent(const StreamList& streams) const
+{
+	if (m_leader.source->isDependent(streams))
+		return true;
+
+	for (const auto& arg : m_args)
+	{
+		if (arg.source->isDependent(streams))
+			return true;
+	}
+
+	return (m_boolean && m_boolean->containsAnyStream(streams));
 }
 
 void HashJoin::invalidateRecords(Request* request) const
 {
 	m_leader.source->invalidateRecords(request);
 
-	for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-		m_args[i].source->invalidateRecords(request);
+	for (const auto& arg : m_args)
+		arg.source->invalidateRecords(request);
 }
 
 void HashJoin::nullRecords(thread_db* tdbb) const
 {
 	m_leader.source->nullRecords(tdbb);
 
-	for (FB_SIZE_T i = 0; i < m_args.getCount(); i++)
-		m_args[i].source->nullRecords(tdbb);
+	for (const auto& arg : m_args)
+		arg.source->nullRecords(tdbb);
 }
 
 ULONG HashJoin::computeHash(thread_db* tdbb,

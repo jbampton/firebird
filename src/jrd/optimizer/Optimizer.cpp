@@ -590,10 +590,12 @@ namespace
 // Constructor
 //
 
-Optimizer::Optimizer(thread_db* aTdbb, CompilerScratch* aCsb, RseNode* aRse, bool parentFirstRows)
+Optimizer::Optimizer(thread_db* aTdbb, CompilerScratch* aCsb, RseNode* aRse,
+					 bool parentFirstRows, double parentCardinality)
 	: PermanentStorage(*aTdbb->getDefaultPool()),
 	  tdbb(aTdbb), csb(aCsb), rse(aRse),
 	  firstRows(rse->firstRows.valueOr(parentFirstRows)),
+	  cardinality(parentCardinality),
 	  compileStreams(getPool()),
 	  bedStreams(getPool()),
 	  keyStreams(getPool()),
@@ -645,7 +647,7 @@ Optimizer::~Optimizer()
 
 RecordSource* Optimizer::compile(RseNode* subRse, BoolExprNodeStack* parentStack)
 {
-	Optimizer subOpt(tdbb, csb, subRse, firstRows);
+	Optimizer subOpt(tdbb, csb, subRse, firstRows, cardinality);
 	const auto rsb = subOpt.compile(parentStack);
 
 	if (parentStack && subOpt.isInnerJoin())
@@ -696,11 +698,33 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 
 	conjunctCount += distributeEqualities(conjunctStack, conjunctCount);
 
-	// AB: If we have limit our retrieval with FIRST / SKIP syntax then
-	// we may not deliver above conditions (from higher rse's) to this
-	// rse, because the results should be consistent.
-	if (rse->rse_skip || rse->rse_first || isSemiJoined())
-		parentStack = nullptr;
+	if (parentStack)
+	{
+		// AB: If we have limit our retrieval with FIRST / SKIP syntax then
+		// we may not deliver above conditions (from higher rse's) to this
+		// rse, because the results should be consistent.
+		if (rse->rse_skip || rse->rse_first)
+			parentStack = nullptr;
+
+		if (isSemiJoined())
+		{
+			fb_assert(parentStack->hasData());
+
+			// We have a semi-join, look at the parent (priorly joined streams) cardinality.
+			// If it's known to be not very small, nullify the parent conjuncts
+			// to give up a possible nested loop join in favor of a hash join.
+			// Here we assume every equi-join condition having a default selectivity (0.1).
+			// TODO: replace with a proper cost-based decision in the future.
+
+			double subSelectivity = MAXIMUM_SELECTIVITY;
+			for (auto count = parentStack->getCount(); count; count--)
+				subSelectivity *= DEFAULT_SELECTIVITY;
+			const auto thresholdCardinality = MINIMUM_CARDINALITY / subSelectivity;
+
+			if (!cardinality || cardinality > thresholdCardinality)
+				parentStack = nullptr;
+		}
+	}
 
 	// Set base-point before the parent/distributed nodes begin.
 	const unsigned baseCount = conjunctCount;
@@ -841,7 +865,8 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 	// Go through the record selection expression generating
 	// record source blocks for all streams
 
-	RiverList rivers, dependentRivers, specialRivers;
+	RiverList rivers, dependentRivers;
+	HalfStaticArray<RseNode*, 4> specialSubQueries;
 
 	bool innerSubStream = false;
 	for (auto node : rse->rse_relations)
@@ -851,8 +876,12 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 
 		const auto subRse = nodeAs<RseNode>(node);
 
-		const bool semiJoin = (subRse && subRse->isSemiJoined());
-		fb_assert(!semiJoin || rse->rse_jointype == blr_inner);
+		if (subRse && subRse->isSemiJoined())
+		{
+			fb_assert(rse->rse_jointype == blr_inner);
+			specialSubQueries.add(subRse);
+			continue;
+		}
 
 		// Find the stream number and place it at the end of the bedStreams array
 		// (if this is really a stream and not another RseNode)
@@ -892,11 +921,7 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 			if (computable)
 			{
 				outerStreams.join(localStreams);
-
-				if (semiJoin)
-					specialRivers.add(river);
-				else
-					rivers.add(river);
+				rivers.add(river);
 			}
 			else
 			{
@@ -905,7 +930,6 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 		}
 		else
 		{
-			fb_assert(!semiJoin);
 			// We have a relation, just add its stream
 			fb_assert(bedStreams.hasData());
 			outerStreams.add(bedStreams.back());
@@ -1041,8 +1065,6 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 
 				if (dependentRivers.hasData())
 				{
-					fb_assert(joinType == INNER_JOIN);
-
 					rivers.join(dependentRivers);
 					dependentRivers.clear();
 				}
@@ -1050,15 +1072,29 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 				const auto finalRiver = FB_NEW_POOL(getPool()) CrossJoin(this, rivers, joinType);
 				fb_assert(rivers.isEmpty());
 				rsb = finalRiver->getRecordSource();
+				cardinality = rsb->getCardinality();
 
-				if (specialRivers.hasData())
+				if (specialSubQueries.hasData())
 				{
 					fb_assert(joinType == INNER_JOIN);
 					joinType = SEMI_JOIN;
 
 					rivers.add(finalRiver);
-					rivers.join(specialRivers);
-					specialRivers.clear();
+
+					for (const auto rse : specialSubQueries)
+					{
+						const auto sub = rse->compile(tdbb, this, true);
+						fb_assert(sub);
+
+						StreamList localStreams;
+						sub->findUsedStreams(localStreams);
+
+						const auto subRiver = FB_NEW_POOL(getPool()) River(csb, sub, rse, localStreams);
+						auto& list = subRiver->isDependent(*finalRiver) ? dependentRivers : rivers;
+						list.add(subRiver);
+					}
+
+					specialSubQueries.clear();
 				}
 			}
 		}

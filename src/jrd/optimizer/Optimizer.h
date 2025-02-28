@@ -228,6 +228,11 @@ public:
 		return true;
 	}
 
+	bool isDependent(const River& river) const
+	{
+		return m_rsb->isDependent(river.getStreams());
+	}
+
 protected:
 	RecordSource* m_rsb;
 	Firebird::HalfStaticArray<RecordSourceNode*, OPT_STATIC_ITEMS> m_nodes;
@@ -450,7 +455,7 @@ public:
 			firstRows = attachment->att_opt_first_rows.valueOr(defaultFirstRows);
 		}
 
-		return Optimizer(tdbb, csb, rse, firstRows).compile(nullptr);
+		return Optimizer(tdbb, csb, rse, firstRows, 0).compile(nullptr);
 	}
 
 	~Optimizer();
@@ -529,7 +534,8 @@ public:
 	void printf(const char* format, ...);
 
 private:
-	Optimizer(thread_db* aTdbb, CompilerScratch* aCsb, RseNode* aRse, bool parentFirstRows);
+	Optimizer(thread_db* aTdbb, CompilerScratch* aCsb, RseNode* aRse,
+			  bool parentFirstRows, double parentCardinality);
 
 	RecordSource* compile(BoolExprNodeStack* parentStack);
 
@@ -561,6 +567,7 @@ private:
 	RseNode* const rse;
 
 	bool firstRows = false;					// optimize for first rows
+	double cardinality = 0;					// self or parent cardinality
 
 	FILE* debugFile = nullptr;
 	unsigned baseConjuncts = 0;				// number of conjuncts in our rse, next conjuncts are distributed parent
