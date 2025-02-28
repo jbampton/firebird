@@ -5584,6 +5584,8 @@ std::optional<ObjectType> MET_qualify_existing_name(thread_db* tdbb, QualifiedNa
 			{
 				case obj_charset:
 				{
+					fb_assert(name.package.isEmpty());
+
 					if (searchSchema == SYSTEM_SCHEMA)
 					{
 						USHORT charSetId = 0;
@@ -5612,6 +5614,8 @@ std::optional<ObjectType> MET_qualify_existing_name(thread_db* tdbb, QualifiedNa
 
 				case obj_collation:
 				{
+					fb_assert(name.package.isEmpty());
+
 					static const CachedRequestId collationHandleId;
 					handle.reset(tdbb, collationHandleId);
 
@@ -5630,6 +5634,8 @@ std::optional<ObjectType> MET_qualify_existing_name(thread_db* tdbb, QualifiedNa
 
 				case obj_exception:
 				{
+					fb_assert(name.package.isEmpty());
+
 					static const CachedRequestId exceptionHandleId;
 					handle.reset(tdbb, exceptionHandleId);
 
@@ -5648,6 +5654,8 @@ std::optional<ObjectType> MET_qualify_existing_name(thread_db* tdbb, QualifiedNa
 
 				case obj_field:
 				{
+					fb_assert(name.package.isEmpty());
+
 					static const CachedRequestId fieldHandleId;
 					handle.reset(tdbb, fieldHandleId);
 
@@ -5666,6 +5674,8 @@ std::optional<ObjectType> MET_qualify_existing_name(thread_db* tdbb, QualifiedNa
 
 				case obj_generator:
 				{
+					fb_assert(name.package.isEmpty());
+
 					static const CachedRequestId generatorHandleId;
 					handle.reset(tdbb, generatorHandleId);
 
@@ -5684,6 +5694,8 @@ std::optional<ObjectType> MET_qualify_existing_name(thread_db* tdbb, QualifiedNa
 
 				case obj_index:
 				{
+					fb_assert(name.package.isEmpty());
+
 					static const CachedRequestId indexHandleId;
 					handle.reset(tdbb, indexHandleId);
 
@@ -5702,6 +5714,8 @@ std::optional<ObjectType> MET_qualify_existing_name(thread_db* tdbb, QualifiedNa
 
 				case obj_package_header:
 				{
+					fb_assert(name.package.isEmpty());
+
 					static const CachedRequestId packageHandleId;
 					handle.reset(tdbb, packageHandleId);
 
@@ -5739,25 +5753,28 @@ std::optional<ObjectType> MET_qualify_existing_name(thread_db* tdbb, QualifiedNa
 
 				case obj_relation:
 				case obj_view:
-				{
-					static const CachedRequestId relationHandleId;
-					handle.reset(tdbb, relationHandleId);
-
-					FOR (REQUEST_HANDLE handle)
-						REL IN RDB$RELATIONS
-						WITH REL.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
-							 REL.RDB$RELATION_NAME EQ name.object.c_str()
+					if (name.package.isEmpty())
 					{
-						found = true;
-						break;
+						static const CachedRequestId relationHandleId;
+						handle.reset(tdbb, relationHandleId);
+
+						FOR (REQUEST_HANDLE handle)
+							REL IN RDB$RELATIONS
+							WITH REL.RDB$SCHEMA_NAME EQ searchSchema.c_str() AND
+								REL.RDB$RELATION_NAME EQ name.object.c_str()
+						{
+							found = true;
+							break;
+						}
+						END_FOR
 					}
-					END_FOR
 
 					break;
-				}
 
 				case obj_trigger:
 				{
+					fb_assert(name.package.isEmpty());
+
 					static const CachedRequestId triggerHandleId;
 					handle.reset(tdbb, triggerHandleId);
 
