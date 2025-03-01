@@ -1134,7 +1134,7 @@ dsql_prc* METD_get_procedure(jrd_tra* transaction, DsqlCompilerScratch* dsqlScra
 				parameter->segLength = FLD.RDB$SEGMENT_LENGTH;
 
 			if (!PR.RDB$FIELD_NAME.NULL)
-				parameter->typeOfName = QualifiedName(PR.RDB$FIELD_NAME, PR.RDB$FIELD_SOURCE_SCHEMA_NAME);
+				parameter->typeOfName = QualifiedName(PR.RDB$FIELD_NAME);
 
 			if (!PR.RDB$RELATION_NAME.NULL)
 				parameter->typeOfTable = QualifiedName(PR.RDB$RELATION_NAME, PR.RDB$RELATION_SCHEMA_NAME);
