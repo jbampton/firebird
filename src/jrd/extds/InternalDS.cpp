@@ -482,7 +482,17 @@ void InternalStatement::doPrepare(thread_db* tdbb, const string& sql)
 			else if ((routine = statement->getRoutine()) && routine->getName().object.hasData())
 			{
 				const MetaString& userName = routine->invoker ? routine->invoker->getUserName() : "";
-				tran->getHandle()->tra_caller_name = CallerName(routine->getObjectType(), routine->getName(), userName);
+
+				if (routine->getName().package.isEmpty())
+				{
+					tran->getHandle()->tra_caller_name = CallerName(routine->getObjectType(),
+						routine->getName(), userName);
+				}
+				else
+				{
+					tran->getHandle()->tra_caller_name = CallerName(obj_package_header,
+						routine->getName().getSchemaAndPackage(), userName);
+				}
 			}
 		}
 		else
