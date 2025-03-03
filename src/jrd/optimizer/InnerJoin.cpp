@@ -587,30 +587,6 @@ River* InnerJoin::formRiver()
 		}
 		else
 		{
-			StreamList depStreams;
-
-			if (optimizer->isSemiJoined() && rsbs.isEmpty())
-			{
-				const auto baseStream = getStreamInfo(stream.number);
-				for (const auto boolean : baseStream->baseConjuncts)
-				{
-					if (optimizer->checkEquiJoin(boolean))
-					{
-						SortedStreamList nodeStreams;
-						boolean->collectStreams(nodeStreams);
-
-						for (const auto stream : nodeStreams)
-						{
-							if (stream != baseStream->number && !depStreams.exist(stream))
-								depStreams.add(stream);
-						}
-					}
-				}
-			}
-
-			StreamStateHolder stateHolder(csb, depStreams);
-			stateHolder.deactivate();
-
 			rsb = optimizer->generateRetrieval(stream.number, sortPtr, false, false);
 		}
 

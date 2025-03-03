@@ -850,7 +850,7 @@ RecordSource* Optimizer::compile(BoolExprNodeStack* parentStack)
 
 	if (isInnerJoin())
 	{
-		for (auto iter = getConjuncts(); iter.hasData(); ++iter)
+		for (auto iter = getBaseConjuncts(); iter.hasData(); ++iter)
 		{
 			if (!(iter & CONJUNCT_USED) &&
 				iter->deterministic() &&
