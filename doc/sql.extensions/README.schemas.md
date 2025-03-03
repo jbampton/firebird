@@ -545,10 +545,10 @@ In earlier versions, `CREATE SCHEMA` served as an alias for `CREATE DATABASE`, w
 `IAttachment::executeCreateDatabase` and `isc_create_database` to create databases. This is no longer the case; 
 the only valid syntax now is `CREATE DATABASE`.
 
-### Object names in error messages
+### Object names in error messages and expressions
 
-Object names included in error or informative messages are now qualified and quoted in the message parameters, 
-even for DIALECT 1 databases. For example:
+Object names in error and informational messages are now consistently qualified and quoted within message parameters, 
+even in DIALECT 1 databases.
 
 ```sql
 SQL> create table TABLE1 (ID integer);
@@ -566,6 +566,8 @@ unsuccessful metadata update
 -Schema "Weird ""Schema""" already exists
 ```
 
+The `RDB$ERROR(EXCEPTION)` expression now returns the fully qualified and quoted name of the exception as well.
+
 ### Object name parsing outside SQL
 
 When working with object names in `isc_dpb_search_path`, `isc_sdl_schema`, and `MAKE_DBKEY`, the names follow the same 
@@ -579,6 +581,15 @@ characters.
 
 The minimum database page size has been increased from 4096 to 8192 bytes. This change was necessary because the 
 previous minimum could no longer accommodate updates done in the system indexes.
+
+### System function overrides
+
+In Firebird versions prior to 6, user-defined functions could override system functions that use standard syntax, 
+such as `ABS` and `MOD`. This behavior is no longer allowed.
+
+Starting with Firebird 6, system functions must be called without quotes and without a schema name. If a user-defined 
+function shares a name with a system function, it must be explicitly called using quotes or qualified with the schema 
+name.
 
 ### Built-in plugins
 
