@@ -292,10 +292,11 @@ ClumpletReader::ClumpletType ClumpletReader::getClumpletType(UCHAR tag) const
 	case Tpb:
 		switch (tag)
 		{
-        case isc_tpb_lock_write:
-        case isc_tpb_lock_read:
+		case isc_tpb_lock_write:
+		case isc_tpb_lock_read:
 		case isc_tpb_lock_timeout:
 		case isc_tpb_at_snapshot_number:
+        case isc_tpb_lock_table_schema:
 			return TraditionalDpb;
 		}
 		return SingleTpb;

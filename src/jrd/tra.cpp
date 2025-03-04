@@ -3163,6 +3163,11 @@ static void transaction_options(thread_db* tdbb,
 			transaction->tra_flags |= TRA_auto_release_temp_blobid;
 			break;
 
+		case isc_tpb_lock_table_schema:
+			ERR_post(Arg::Gds(isc_bad_tpb_content) <<
+					 Arg::Gds(isc_tpb_reserv_before_table) << Arg::Str("isc_tpb_lock_table_schema"));
+			break;
+
 		case isc_tpb_lock_write:
 			// Cannot set a R/W table reservation if the whole txn is R/O.
 			if (read_only.asBool())
@@ -3171,9 +3176,10 @@ static void transaction_options(thread_db* tdbb,
 						 Arg::Gds(isc_tpb_writelock_after_readtxn));
 			}
 			anylock_write = true;
-			// fall into
+			[[fallthrough]];
 		case isc_tpb_lock_read:
 			{
+				QualifiedName relationName;
 				const char* option_name = (op == isc_tpb_lock_read) ?
 					"isc_tpb_lock_read" : "isc_tpb_lock_write";
 
@@ -3184,7 +3190,7 @@ static void transaction_options(thread_db* tdbb,
 							 Arg::Gds(isc_tpb_reserv_missing_tlen) << Arg::Str(option_name));
 				}
 
-				const USHORT len = *tpb++;
+				USHORT len = *tpb++;
 				if (len > MAX_SQL_IDENTIFIER_LEN)
 				{
 					ERR_post(Arg::Gds(isc_bad_tpb_content) <<
@@ -3213,16 +3219,70 @@ static void transaction_options(thread_db* tdbb,
 							 										 Arg::Str(option_name));
 				}
 
-				const MetaName orgName(reinterpret_cast<const char*>(tpb), len);
-				const QualifiedName relationName(attachment->nameToMetaCharSet(tdbb, orgName));
+				relationName.object = attachment->nameToMetaCharSet(tdbb,
+					string(reinterpret_cast<const char*>(tpb), len));
 
 				tpb += len;
+
+				if (tpb < end && *tpb == isc_tpb_lock_table_schema)
+				{
+					// Do we have space for the identifier length?
+					if (++tpb >= end)
+					{
+						ERR_post(
+							Arg::Gds(isc_bad_tpb_content) <<
+							Arg::Gds(isc_tpb_reserv_missing_tlen) << Arg::Str("isc_tpb_lock_table_schema"));
+					}
+
+					len = *tpb++;
+					if (len > MAX_SQL_IDENTIFIER_LEN)
+					{
+						ERR_post(
+							Arg::Gds(isc_bad_tpb_content) <<
+							Arg::Gds(isc_tpb_reserv_long_tlen) <<
+							Arg::Num(len) << Arg::Str("isc_tpb_lock_table_schema"));
+					}
+
+					if (!len)
+					{
+						ERR_post(
+							Arg::Gds(isc_bad_tpb_content) <<
+							Arg::Gds(isc_tpb_reserv_null_tlen) <<
+							Arg::Str("isc_tpb_lock_table_schema"));
+					}
+
+					// Does the identifier length surpasses the remaining of the TPB?
+					if (tpb >= end)
+					{
+						ERR_post(
+							Arg::Gds(isc_bad_tpb_content) <<
+							Arg::Gds(isc_tpb_reserv_missing_tname) <<
+							Arg::Num(len) << Arg::Str("isc_tpb_lock_table_schema"));
+					}
+
+					if (end - tpb < len)
+					{
+						ERR_post(
+							Arg::Gds(isc_bad_tpb_content) <<
+							Arg::Gds(isc_tpb_reserv_corrup_tlen) <<
+							Arg::Num(len) << Arg::Str("isc_tpb_lock_table_schema"));
+					}
+
+					relationName.schema = attachment->nameToMetaCharSet(tdbb,
+						string(reinterpret_cast<const char*>(tpb), len));
+
+					tpb += len;
+				}
+
+				attachment->qualifyExistingName(tdbb, relationName, {obj_relation});
+
 				jrd_rel* relation = MET_lookup_relation(tdbb, relationName);
 				if (!relation)
 				{
-					ERR_post(Arg::Gds(isc_bad_tpb_content) <<
-							 Arg::Gds(isc_tpb_reserv_relnotfound) << relationName.toQuotedString() <<
-																	 Arg::Str(option_name));
+					ERR_post(
+						Arg::Gds(isc_bad_tpb_content) <<
+						Arg::Gds(isc_tpb_reserv_relnotfound) <<
+						relationName.toQuotedString() << Arg::Str(option_name));
 				}
 
 				// force a scan to read view information

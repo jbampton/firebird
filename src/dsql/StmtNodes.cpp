@@ -9873,6 +9873,9 @@ void SetTransactionNode::execute(thread_db* tdbb, DsqlRequest* request, jrd_tra*
 void SetTransactionNode::genTableLock(DsqlCompilerScratch* dsqlScratch,
 	const RestrictionOption& tblLock, USHORT lockLevel)
 {
+	const auto tdbb = JRD_get_thread_data();
+	const auto attachment = dsqlScratch->getAttachment()->dbb_attachment;
+
 	if (tblLock.tables->isEmpty())
 		return;
 
@@ -9884,11 +9887,19 @@ void SetTransactionNode::genTableLock(DsqlCompilerScratch* dsqlScratch,
 	const USHORT lockMode = (tblLock.lockMode & LOCK_MODE_WRITE) ?
 		isc_tpb_lock_write : isc_tpb_lock_read;
 
-	for (const auto& tableName : *tblLock.tables)
+	for (auto& tableName : *tblLock.tables)
 	{
 		dsqlScratch->appendUChar(lockMode);
-		// FIXME: schema
-		dsqlScratch->appendNullString(tableName.object.c_str());	// stuff table name
+		dsqlScratch->appendNullString(attachment->nameToUserCharSet(tdbb, tableName.object).c_str());
+
+		dsqlScratch->qualifyExistingName(tableName, obj_relation);
+
+		if (tableName.schema.hasData())
+		{
+			dsqlScratch->appendUChar(isc_tpb_lock_table_schema);
+			dsqlScratch->appendNullString(attachment->nameToUserCharSet(tdbb, tableName.schema).c_str());
+		}
+
 		dsqlScratch->appendUChar(lockLevel);
 	}
 }
