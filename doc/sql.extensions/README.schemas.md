@@ -373,6 +373,14 @@ Select Expression
 `isc_dpb_search_path` is a string DPB parameter, similar to `isc_dpb_user_name`, used to set the initial schema search 
 path for a session.
 
+## New TPB items
+
+### `isc_tpb_lock_table_schema`
+
+`isc_tpb_lock_table_schema` could be used with `isc_tpb_lock_read` and `isc_tpb_lock_write`, after the table name and 
+before `isc_tpb_shared`, `isc_tpb_protected` or `isc_tpb_exclusive`. The format of `isc_tpb_lock_table_schema` is 
+a single byte length followed by the schema name.
+
 ## Array support
 
 ### `isc_sdl_schema`
@@ -570,10 +578,14 @@ The `RDB$ERROR(EXCEPTION)` expression now returns the fully qualified and quoted
 
 ### Object name parsing outside SQL
 
-When working with object names in `isc_dpb_search_path`, `isc_sdl_schema`, and `MAKE_DBKEY`, the names follow the same 
-rules as in SQL. This means that names containing special characters or lowercase letters must be enclosed in quotes. 
+When working with object names in `isc_dpb_search_path`, `isc_dpb_lc_ctype`, `isc_dpb_set_db_charset` and `MAKE_DBKEY`, 
+the names follow the same rules as in SQL. 
+This means that names containing special characters or lowercase letters must be enclosed in quotes.
 
-For `MAKE_DBKEY`, unqualified names are resolved using the current search path. In earlier versions, `MAKE_DBKEY` 
+With `isc_dpb_lc_ctype` and `isc_dpb_set_db_charset`, names not qualified with a schema are resolved using the `SYSTEM` 
+schema.
+
+With `MAKE_DBKEY`, unqualified names are resolved using the current search path. In earlier versions, `MAKE_DBKEY` 
 required an exact table name as its first parameter and did not support the use of double quotes for special 
 characters.
 
@@ -631,3 +643,9 @@ It should also be possible to downgrade databases with multiple user schemas, as
 the same name do not exist in multiple schemas.
 
 This documentation will be updated once these changes are implemented.
+
+## Limitations
+
+DPB and TPB parameters cannot be greater than 255 bytes. That imposes a limit for usage of multiple schemas in 
+`isc_dpb_search_path` or fully qualified names with multi-byte characters in `isc_dpb_lc_ctype` and 
+`isc_dpb_set_db_charset`.
